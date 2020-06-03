@@ -28,7 +28,7 @@ Replaces: vulkan-loader,
 Multi-Arch: same
 Description: Vulkan loader library
  The Loader implements the main VK library. It handles layer management and
- driver management. The loader fully supports multi-gpu operation. As part of
+ driver management. The loader fully supports multi-GPU operation. As part of
  this, it dispatches API calls to the correct driver, and to the correct
  layers, based on the GPU object selected by the application.
  .
@@ -46,7 +46,7 @@ Replaces: vulkan-sdk-headers
 Multi-Arch: same
 Description: Vulkan loader library -- development files
  The Loader implements the main VK library. It handles layer management and
- driver management. The loader fully supports multi-gpu operation. As part of
+ driver management. The loader fully supports multi-GPU operation. As part of
  this, it dispatches API calls to the correct driver, and to the correct
  layers, based on the GPU object selected by the application.
  .
