@@ -1,0 +1,5 @@
+vulkan-loader (1.2.141-1) bionic; urgency=medium
+
+  * Initial release
+
+ -- John Zupin <john@unknown>  Tue, 30 Jun 2020 11:31:44 -0600
