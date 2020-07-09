@@ -19,7 +19,11 @@ Vcs-Git: https://github.com/johnzupin/Vulkan-Loader
 Vcs-Browser: https://github.com/johnzupin/Vulkan-Loader
 
 Package: libvulkan1
-Architecture: any
+Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: This package contains the Vulkan loader
 
+Package: libvulkan-dev
+Architecture: linux-any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: This package contains the Vulkan loader
