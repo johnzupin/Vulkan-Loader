@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: John Zupin <johnz@lunarg.com>
 Build-Depends: debhelper (>= 10),
  cmake,
- vulkan-headers (>= 1.2.141.0),
+ vulkan-headers (>= 1.2.148.0),
  libwayland-dev,
  libwayland-egl1,
  libx11-xcb-dev,
