@@ -1,3 +1,78 @@
+vulkan-loader (1.2.148.0-1lunarg20.04-1) focal; urgency=medium
+
+  [ dan sinclair ]
+  * scripts: Use named params for generator options
+
+  [ Lenny Komow ]
+  * loader: Fix crash in vkGetDeviceQueue2
+
+  [ Charles Giessen ]
+  * loader: Use MoltenVK in app bundle if found
+
+  [ Jan Beich ]
+  * build: include system headers last
+
+  [ Shannon McPherson ]
+  * build: Update known-good files for 1.2.145 header
+
+  [ Charles Giessen ]
+  * loader: fix TSAN warning
+  * loader: fix wrongly returned error code
+
+  [ Sylvain Defresne ]
+  * Convert GN libs lists to frameworks
+
+  [ Alexander Batashev ]
+  * loader: Fix symbol lookup order
+
+  [ Nicolas Caramelli ]
+  * loader: Add support for directfb surface extension
+
+  [ Shannon McPherson ]
+  * build: Update known-good files for 1.2.146 header
+
+  [ Nicolas Caramelli ]
+  * Remove duplicate key / value in scripts/common_codegen.py
+
+  [ John Zupin ]
+  * package: add libvulkan-dev package
+
+  [ Mike Schuchardt ]
+  * build: Roll GN DEPS file
+
+  [ Charles Giessen ]
+  * loader: Make RTLD_DEEPBIND conditional on ASAN
+
+  [ Bob Ellison ]
+  * scripts: udpate_deps retry on clone or fetch failure
+
+  [ Lenny Komow ]
+  * loader: Remove RTLD_DEEPBIND flag
+
+  [ Shannon McPherson ]
+  * build: Update known-good files for 1.2.147 header
+
+  [ John Zupin ]
+  * control: add version to dependency
+
+  [ Bob Ellison ]
+  * scripts: fix update_deps retry clone
+
+  [ Shannon McPherson ]
+  * build: Update known-good files for 1.2.148 header
+
+  [ John Zupin ]
+  * copyright: updated for release
+
+  [ Lenny Komow ]
+  * loader: Sort physical devices on Windows
+  * docs: Update loader doc with device sorting info
+
+  [ John Zupin ]
+  * control: update required headers to 1.2.148.0
+
+ -- John Zupin <john@odin>  Mon, 27 Jul 2020 16:58:57 -0600
+
 vulkan-loader (1.2.141-1) bionic; urgency=medium
 
   * Initial release
