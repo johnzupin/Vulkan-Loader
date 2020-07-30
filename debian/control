@@ -14,9 +14,9 @@ Build-Depends: debhelper (>= 10),
  pkg-config,
  python3
 Standards-Version: 4.1.2
-Homepage: https://github.com/johnzupin/Vulkan-Loader
-Vcs-Git: https://github.com/johnzupin/Vulkan-Loader
-Vcs-Browser: https://github.com/johnzupin/Vulkan-Loader
+Homepage: https://github.com/KhronosGroup/Vulkan-Loader
+Vcs-Git: https://github.com/KhronosGroup/Vulkan-Loader
+Vcs-Browser: https://github.com/KhronosGroup/Vulkan-Loader
 
 Package: libvulkan1
 Architecture: linux-any
