@@ -1,3 +1,14 @@
+vulkan-loader (1.2.148.0-1ubuntu18.04-2) bionic; urgency=medium
+
+  [ John Zupin ]
+  * control: updated git repo url
+  * debian: remove README.Debian
+
+  [ Lenny Komow ]
+  * loader: Add reporting for physical device sorting
+
+ -- John Zupin <john@odin>  Fri, 31 Jul 2020 17:07:43 -0600
+
 vulkan-loader (1.2.148.0-1lunarg18.04-1) bionic; urgency=medium
 
   [ dan sinclair ]
