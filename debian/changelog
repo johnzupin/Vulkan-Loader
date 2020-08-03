@@ -1,3 +1,12 @@
+vulkan-loader (1.2.148.0-1ubuntu20.04-3) focal; urgency=medium
+
+  [ Lenny Komow ]
+  * loader: Fixpossible memory corruption
+  * loader: Fix variable name
+  * loader: Remove illegal asssignment
+
+ -- John Zupin <john@odin>  Mon, 03 Aug 2020 16:02:31 -0600
+
 vulkan-loader (1.2.148.0-1ubuntu20.04-2) focal; urgency=medium
 
   [ John Zupin ]
