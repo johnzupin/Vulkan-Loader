@@ -21,9 +21,11 @@ Vcs-Browser: https://github.com/KhronosGroup/Vulkan-Loader
 Package: libvulkan1
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Multi-Arch: same
 Description: This package contains the Vulkan loader
 
 Package: libvulkan-dev
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libvulkan1 (>= 1.2.148.0)
+Multi-Arch: same
 Description: This package contains the Vulkan loader
