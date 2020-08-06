@@ -1,3 +1,10 @@
+vulkan-loader (1.2.148.0-1ubuntu20.04-5) focal; urgency=medium
+
+  * control: updated libvulkans breaks/replaces
+  * control: updated multi-arch field
+
+ -- John Zupin <john@odin>  Wed, 05 Aug 2020 20:56:55 -0600
+
 vulkan-loader (1.2.148.0-1ubuntu20.04-4) focal; urgency=medium
 
   * control: dev requires libvulkan1
