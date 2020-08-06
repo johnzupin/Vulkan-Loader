@@ -25,5 +25,5 @@ Description: This package contains the Vulkan loader
 
 Package: libvulkan-dev
 Architecture: linux-any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libvulkan1 (>= 1.2.148.0)
 Description: This package contains the Vulkan loader
