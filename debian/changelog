@@ -1,3 +1,11 @@
+vulkan-loader (1.2.148.0-1ubuntu18.04-7) bionic; urgency=medium
+
+  [ Piotr Bialecki ]
+  * loader: Fix physical device sorting crash
+  * loader: Fix physical device sorting crash
+
+ -- John Zupin <john@odin>  Mon, 10 Aug 2020 11:36:58 -0600
+
 vulkan-loader (1.2.148.0-1ubuntu18.04-6) bionic; urgency=medium
 
   * control: add breaks/replaces for ubuntu loader
