@@ -589,10 +589,10 @@ layers. Layers specified via environment variable are top-most (closest to the
 application) while layers specified by the application are bottom-most.
 
 An example of using these environment variables to activate the validation
-layer `VK_LAYER_LUNARG_parameter_validation` on Linux or macOS is as follows:
+layer `VK_LAYER_KHRONOS_validation` on Linux or macOS is as follows:
 
 ```
-> $ export VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_parameter_validation
+> $ export VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation
 ```
 
 
@@ -605,14 +605,11 @@ as follows:
 
 Ordering may also be important internal to the list of explicit layers.
 Some layers may be dependent on other behavior being implemented before
-or after the loader calls it.  For example: the VK_LAYER_LUNARG_core_validation
-layer expects the VK_LAYER_LUNARG_parameter_validation layer to be called first.
-This is because the VK_LAYER_LUNARG_parameter_validation layer will filter out any
-invalid `NULL` pointer calls prior to the rest of the validation checking
-done by the VK_LAYER_LUNARG_core_validation layer.  If not done properly, you may see
-crashes in the VK_LAYER_LUNARG_core_validation layer that would otherwise be
-avoided.
-
+or after the loader calls it.  For example: An overlay layer may want to
+to use VK_LAYER_KHRONOS_validation to verify that the overlay layer is
+behaving appropriately. This requires putting the overlay layer closer to
+the application so that the validation layer can intercept any Vulkan API
+calls the overlay layer needs to make to function.
 
 #### Application Usage of Extensions
 
@@ -1382,7 +1379,7 @@ the `VkInstanceCreateInfo`/`VkDeviceCreateInfo` structure.
      pfnNextGetInstanceProcAddr(NULL, "vkCreateInstance").
   - For CreateDevice get the next entity's `vkCreateDevice` by calling the
 "pfnNextGetInstanceProcAddr":
-     pfnNextGetInstanceProcAddr(NULL, "vkCreateDevice").
+     pfnNextGetInstanceProcAddr(instance, "vkCreateDevice"), passing the already created instance handle.
   - Advanced the linked list to the next node: pLayerInfo = pLayerInfo->pNext.
   - Call down the chain either `vkCreateDevice` or `vkCreateInstance`
   - Initialize your layer dispatch table by calling the next entity's
@@ -1440,6 +1437,7 @@ vkCreateDevice(
         const VkAllocationCallbacks *pAllocator,
         VkDevice *pDevice)
 {
+    VkInstance instance = GetInstanceFromPhysicalDevice(gpu);
     VkLayerDeviceCreateInfo *chain_info =
         get_chain_info(pCreateInfo, VK_LAYER_LINK_INFO);
 
@@ -1448,7 +1446,7 @@ vkCreateDevice(
     PFN_vkGetDeviceProcAddr fpGetDeviceProcAddr =
         chain_info->u.pLayerInfo->pfnNextGetDeviceProcAddr;
     PFN_vkCreateDevice fpCreateDevice =
-        (PFN_vkCreateDevice)fpGetInstanceProcAddr(NULL, "vkCreateDevice");
+        (PFN_vkCreateDevice)fpGetInstanceProcAddr(instance, "vkCreateDevice");
     if (fpCreateDevice == NULL) {
         return VK_ERROR_INITIALIZATION_FAILED;
     }
@@ -1472,6 +1470,8 @@ vkCreateDevice(
     return VK_SUCCESS;
 }
 ```
+In this case the function `GetInstanceFromPhysicalDevice` is called to get the instance handle.
+In practice, this would be done by any method a layer chooses to get an instance handle from the physical device.
 
 
 #### Meta-layers
@@ -1523,6 +1523,15 @@ instantiation of the layer name would be ignored.
 The
 Manifest file formatting necessary to define a meta-layer can be found in the
 [Layer Manifest File Format](#layer-manifest-file-format) section.
+
+##### Override Meta-Layer
+
+If an implicit meta-layer was found on the system with the name `VK_LAYER_LUNARG_override`,
+the loader uses it as an 'override' layer. This is used to selectively enable and disable
+other layers from being loaded. It can be applied globally or to a specific application
+or applications. Disabling layers and specifying the application requires the layer manifest have the following keys:
+  * `blacklisted_layers` - List of explicit layer names that should not be loaded even if requested by the application.
+  * `app_keys` - List of paths to executables that the override layer applies to. When an application starts up and the override layer is present, the loader first checks to see if the application is in the list. If it isn't, the override layer is not applied. If the list is empty or if `app_keys` doesn't exist, the loader makes the override layer global and applies it to every application upon startup.
 
 #### Pre-Instance Functions
 
