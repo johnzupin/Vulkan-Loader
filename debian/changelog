@@ -1,3 +1,9 @@
+vulkan-loader (1.2.154.0-1lunarg20.04-2) focal; urgency=medium
+
+  * packages: update deps version
+
+ -- John Zupin <john@odin>  Wed, 30 Sep 2020 16:43:09 -0600
+
 vulkan-loader (1.2.154.0-1lunarg20.04-1) focal; urgency=medium
 
   [ Charles Giessen ]
