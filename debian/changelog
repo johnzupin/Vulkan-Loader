@@ -1,3 +1,10 @@
+vulkan-loader (1.2.154.0-1lunarg18.04-3) bionic; urgency=medium
+
+  [ Lenny Komow ]
+  * loader: Fix incorrect allocation error cleanup
+
+ -- John Zupin <john@odin>  Thu, 01 Oct 2020 15:28:03 -0600
+
 vulkan-loader (1.2.154.0-1lunarg18.04-2) bionic; urgency=medium
 
   * packages: update deps version
