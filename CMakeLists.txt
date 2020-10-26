@@ -109,12 +109,6 @@ if(UNIX)
             STRING
             "Search path to use when XDG_DATA_DIRS is unset or empty or the current process is SUID/SGID. Default is freedesktop compliant."
         )
-    set(
-        SYSCONFDIR ""
-        CACHE
-            STRING
-            "System-wide search directory. If not set or empty, CMAKE_INSTALL_FULL_SYSCONFDIR and /etc are used."
-        )
 endif()
 
 if(UNIX AND NOT APPLE) # i.e.: Linux
@@ -205,16 +199,13 @@ endif()
 if(UNIX)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}" FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}")
 
-    if(NOT (SYSCONFDIR STREQUAL ""))
-        # SYSCONFDIR is specified, use it and do not force /etc.
-        set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS SYSCONFDIR="${SYSCONFDIR}")
+    if(NOT (CMAKE_INSTALL_SYSCONFDIR STREQUAL "etc"))
+        # CMAKE_INSTALL_SYSCONFDIR is specified, use it and do not force /etc.
+        set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS SYSCONFDIR="${CMAKE_INSTALL_SYSCONFDIR}")
     else()
         set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS SYSCONFDIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}")
-
         # Make sure /etc is searched by the loader
-        if(NOT (CMAKE_INSTALL_FULL_SYSCONFDIR STREQUAL "/etc"))
-            set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS EXTRASYSCONFDIR="/etc")
-        endif()
+        set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS EXTRASYSCONFDIR="/etc")
     endif()
 endif()
 
