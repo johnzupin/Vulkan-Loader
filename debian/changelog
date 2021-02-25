@@ -1,3 +1,9 @@
+vulkan-loader (1.2.170.0~rc2-1lunarg18.04-1) bionic; urgency=medium
+
+  * packaging: updated LunarG's copyrights
+
+ -- John Zupin <john@odin>  Thu, 25 Feb 2021 14:19:01 -0700
+
 vulkan-loader (1.2.170.0~rc1-1lunarg18.04-1) bionic; urgency=medium
 
   [ Michel Zou ]
