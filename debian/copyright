@@ -3,7 +3,7 @@ Upstream-Name: libvulkan1
 Source: https://github.com/KhronosGroup/Vulkan-Loader
 
 Files: *
-Copyright: Copyright 2020 LunarG Inc.
+Copyright: Copyright 2021 LunarG Inc.
 License: Apache-2.0
 
 Files: debian/*
