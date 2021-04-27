@@ -1,3 +1,52 @@
+vulkan-loader (1.2.176.0~rc1-1lunarg18.04-1) bionic; urgency=medium
+
+  [ Shannon McPherson ]
+  * scripts: Update copyright in `common_codegen.py`
+  * build: Update known-good files for 1.2.171 header
+  * build: Update known-good files for 1.2.172 header
+
+  [ John Zupin ]
+  * packaging: update debian/copyright file
+
+  [ Mike Schuchardt ]
+  * build: Update known-good files for 1.2.173 header
+
+  [ Lenny Komow ]
+  * docs: Update note about ICD proc addr
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.174
+
+  [ Mike Gorchak ]
+  * Add support for QNX platform.
+  * Add QNX platform makefiles.
+  * Rename build option to make it clearer that it belongs to QNX only.
+  * Add a couple of paragraphs about building process under QNX.
+
+  [ Charles Giessen ]
+  * build: Run generator to update extensions
+  * ci: Add verification of generated source code
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.176
+
+  [ Mike Gorchak ]
+  * build: Fix QNX build system
+
+  [ Charles Giessen ]
+  * docs: Update pre-instance-function list
+  * loader: Accept layer manifest version 1.2.0
+  * loader: Silence wrong ELF class errors
+  * loader: Fix unused variable warning on Apple
+
+  [ Lenny Komow ]
+  * loader: Fix stack overflow with large manifests
+
+  [ John Zupin ]
+  * packaging: updated control version deps
+
+ -- John Zupin <john@odin>  Tue, 27 Apr 2021 13:48:30 -0600
+
 vulkan-loader (1.2.170.0~rc2-1lunarg18.04-1) bionic; urgency=medium
 
   * packaging: updated LunarG's copyrights
