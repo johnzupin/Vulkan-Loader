@@ -77,6 +77,10 @@
 #include <dxgi1_6.h>
 #include "adapters.h"
 
+#if !defined(NDEBUG)
+#include <crtdbg.h>
+#endif
+
 typedef HRESULT (APIENTRY *PFN_CreateDXGIFactory1)(REFIID riid, void **ppFactory);
 static PFN_CreateDXGIFactory1 fpCreateDXGIFactory1;
 #endif
@@ -621,16 +625,14 @@ bool loaderGetDeviceRegistryEntry(const struct loader_instance *inst, char **reg
     char *manifest_path = NULL;
     bool found = false;
 
-    if (NULL == total_size || NULL == reg_data) {
-        *result = VK_ERROR_INITIALIZATION_FAILED;
-        return false;
-    }
+    assert(reg_data != NULL && "loaderGetDeviceRegistryEntry: reg_data is a NULL pointer");
+    assert(total_size != NULL && "loaderGetDeviceRegistryEntry: total_size is a NULL pointer");
 
     CONFIGRET status = CM_Open_DevNode_Key(dev_id, KEY_QUERY_VALUE, 0, RegDisposition_OpenExisting, &hkrKey, CM_REGISTRY_SOFTWARE);
     if (status != CR_SUCCESS) {
         loader_log(inst, VK_DEBUG_REPORT_WARNING_BIT_EXT, 0,
             "loaderGetDeviceRegistryEntry: Failed to open registry key for DeviceID(%d)", dev_id);
-        *result = VK_ERROR_INITIALIZATION_FAILED;
+        *result = VK_ERROR_INCOMPATIBLE_DRIVER;
         return false;
     }
 
@@ -675,14 +677,14 @@ bool loaderGetDeviceRegistryEntry(const struct loader_instance *inst, char **reg
         loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
             "loaderGetDeviceRegistryEntry: DeviceID(%d) Failed to obtain %s", value_name);
 
-        *result = VK_ERROR_INITIALIZATION_FAILED;
+        *result = VK_ERROR_INCOMPATIBLE_DRIVER;
         goto out;
     }
 
     if (data_type != REG_SZ && data_type != REG_MULTI_SZ) {
         loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
             "loaderGetDeviceRegistryEntry: Invalid %s data type. Expected REG_SZ or REG_MULTI_SZ.", value_name);
-        *result = VK_ERROR_INITIALIZATION_FAILED;
+        *result = VK_ERROR_INCOMPATIBLE_DRIVER;
         goto out;
     }
 
@@ -726,10 +728,7 @@ VkResult loaderGetDeviceRegistryFiles(const struct loader_instance *inst, char *
     VkResult result = VK_SUCCESS;
     bool found = false;
 
-    if (NULL == reg_data) {
-        result = VK_ERROR_INITIALIZATION_FAILED;
-        return result;
-    }
+    assert(reg_data != NULL && "loaderGetDeviceRegistryFiles: reg_data is NULL");
 
     // if after obtaining the DeviceNameSize, new device is added start over
     do {
@@ -800,7 +799,7 @@ VkResult loaderGetDeviceRegistryFiles(const struct loader_instance *inst, char *
                     loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
                                "loaderGetDeviceRegistryFiles: unable to obtain GUID for:%d error:%d", childID, status);
 
-                    result = VK_ERROR_INITIALIZATION_FAILED;
+                    result = VK_ERROR_INCOMPATIBLE_DRIVER;
                     continue;
                 }
 
@@ -822,7 +821,7 @@ VkResult loaderGetDeviceRegistryFiles(const struct loader_instance *inst, char *
     }
 
     if (!found && result != VK_ERROR_OUT_OF_HOST_MEMORY) {
-        result = VK_ERROR_INITIALIZATION_FAILED;
+        result = VK_ERROR_INCOMPATIBLE_DRIVER;
     }
 
     return result;
@@ -902,10 +901,7 @@ VkResult loaderGetRegistryFiles(const struct loader_instance *inst, char *locati
     IDXGIFactory1 *dxgi_factory = NULL;
     bool is_driver = !strcmp(location, VK_DRIVERS_INFO_REGISTRY_LOC);
 
-    if (NULL == reg_data) {
-        result = VK_ERROR_INITIALIZATION_FAILED;
-        goto out;
-    }
+    assert(reg_data != NULL && "loaderGetRegistryFiles: reg_data is a NULL pointer");
 
     if (is_driver) {
         HRESULT hres = fpCreateDXGIFactory1(&IID_IDXGIFactory1, (void **)&dxgi_factory);
@@ -1051,7 +1047,7 @@ VkResult loaderGetRegistryFiles(const struct loader_instance *inst, char *locati
     }
 
     if (!found && result != VK_ERROR_OUT_OF_HOST_MEMORY) {
-        result = VK_ERROR_INITIALIZATION_FAILED;
+        result = VK_ERROR_INCOMPATIBLE_DRIVER;
     }
 
 out:
@@ -2511,6 +2507,13 @@ void loader_initialize(void) {
     HMODULE dxgi_module = LoadLibrary(systemPath);
     fpCreateDXGIFactory1 = dxgi_module == NULL ? NULL :
         (PFN_CreateDXGIFactory1)GetProcAddress(dxgi_module, "CreateDXGIFactory1");
+
+#if !defined(NDEBUG)
+    _set_error_mode(_OUT_TO_STDERR);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+#endif
+
 #endif
 }
 
@@ -3787,24 +3790,9 @@ static inline VkResult CheckAndAdjustDataFileList(const struct loader_instance *
     return VK_SUCCESS;
 }
 
-// If the file found is a manifest file name, add it to the out_files manifest list.
-static VkResult AddIfManifestFile(const struct loader_instance *inst, const char *file_name, struct loader_data_files *out_files) {
+// add file_name to the out_files manifest list. Assumes its a valid manifest file name
+static VkResult AddManifestFile(const struct loader_instance *inst, const char* file_name, struct loader_data_files *out_files) {
     VkResult vk_result = VK_SUCCESS;
-
-    if (NULL == file_name || NULL == out_files) {
-        loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0, "AddIfManfistFile: Received NULL pointer");
-        vk_result = VK_ERROR_INITIALIZATION_FAILED;
-        goto out;
-    }
-
-    // Look for files ending with ".json" suffix
-    size_t name_len = strlen(file_name);
-    const char *name_suffix = file_name + name_len - 5;
-    if ((name_len < 5) || 0 != strncmp(name_suffix, ".json", 5)) {
-        // Use incomplete to indicate invalid name, but to keep going.
-        vk_result = VK_INCOMPLETE;
-        goto out;
-    }
 
     // Check and allocate space in the manifest list if necessary
     vk_result = CheckAndAdjustDataFileList(inst, out_files);
@@ -3815,13 +3803,35 @@ static VkResult AddIfManifestFile(const struct loader_instance *inst, const char
     out_files->filename_list[out_files->count] =
         loader_instance_heap_alloc(inst, strlen(file_name) + 1, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
     if (out_files->filename_list[out_files->count] == NULL) {
-        loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0, "AddIfManfistFile: Failed to allocate space for manifest file %d list",
+        loader_log(inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0, "AddManifestFile: Failed to allocate space for manifest file %d list",
                    out_files->count);
         vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
         goto out;
     }
 
     strcpy(out_files->filename_list[out_files->count++], file_name);
+
+out:
+    return vk_result;
+}
+
+// If the file found is a manifest file name, add it to the out_files manifest list.
+static VkResult AddIfManifestFile(const struct loader_instance *inst, const char *file_name, struct loader_data_files *out_files) {
+    VkResult vk_result = VK_SUCCESS;
+
+    assert(NULL != file_name && "AddIfManifestFile: Received NULL pointer for file_name");
+    assert(NULL != out_files && "AddIfManifestFile: Received NULL pointer for out_files");
+
+    // Look for files ending with ".json" suffix
+    size_t name_len = strlen(file_name);
+    const char *name_suffix = file_name + name_len - 5;
+    if ((name_len < 5) || 0 != strncmp(name_suffix, ".json", 5)) {
+        // Use incomplete to indicate invalid name, but to keep going.
+        vk_result = VK_INCOMPLETE;
+        goto out;
+    }
+
+    vk_result = AddManifestFile(inst, file_name, out_files);
 
 out:
 
@@ -4334,20 +4344,25 @@ static VkResult ReadDataFilesInRegistry(const struct loader_instance *inst, enum
         }
     }
 
+    if (regHKR_result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+        vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+        goto out;
+    }
+
     // This call looks into the Khronos non-device specific section of the registry.
     bool use_secondary_hive = (data_file_type == LOADER_DATA_FILE_MANIFEST_LAYER) && (!IsHighIntegrity());
     VkResult reg_result = loaderGetRegistryFiles(inst, registry_location, use_secondary_hive, &search_path, &reg_size);
+    if (reg_result == VK_ERROR_OUT_OF_HOST_MEMORY) {
+        vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+        goto out;
+    }
 
     if ((VK_SUCCESS != reg_result && VK_SUCCESS != regHKR_result) || NULL == search_path) {
         if (data_file_type == LOADER_DATA_FILE_MANIFEST_ICD) {
             loader_log(
                 inst, VK_DEBUG_REPORT_ERROR_BIT_EXT, 0,
                 "ReadDataFilesInRegistry: Registry lookup failed to get ICD manifest files.  Possibly missing Vulkan driver?");
-            if (VK_SUCCESS == reg_result || VK_ERROR_OUT_OF_HOST_MEMORY == reg_result) {
-                vk_result = reg_result;
-            } else {
-                vk_result = regHKR_result;
-            }
+            vk_result = VK_ERROR_INCOMPATIBLE_DRIVER;
         } else {
             if (warn_if_not_present) {
                 if (data_file_type == LOADER_DATA_FILE_MANIFEST_LAYER) {
@@ -4360,12 +4375,8 @@ static VkResult ReadDataFilesInRegistry(const struct loader_instance *inst, enum
                                "ReadDataFilesInRegistry: Registry lookup failed to get data files.");
                 }
             }
-            if (reg_result == VK_ERROR_OUT_OF_HOST_MEMORY) {
-                vk_result = reg_result;
-            } else {
-                // Return success for now since it's not critical for layers
-                vk_result = VK_SUCCESS;
-            }
+            // Return success for now since it's not critical for layers
+            vk_result = VK_SUCCESS;
         }
         goto out;
     }
@@ -4967,7 +4978,7 @@ void loaderScanForImplicitLayers(struct loader_instance *inst, struct loader_lay
                 continue;
             }
 
-            res = loaderAddLayerProperties(inst, instance_layers, json, true, file_str);
+            res = loaderAddLayerProperties(inst, instance_layers, json, false, file_str);
 
             loader_instance_heap_free(inst, file_str);
             manifest_files.filename_list[i] = NULL;
@@ -5028,7 +5039,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL loader_gpdpa_instance_internal(V
     if (loader_phys_dev_ext_gpa(loader_get_instance(inst), pName, true, NULL, &addr)) return addr;
 
     // Don't call down the chain, this would be an infinite loop
-    loader_log(NULL, VK_DEBUG_REPORT_WARNING_BIT_EXT, 0, "loader_gpdpa_instance_internal() unrecognized name %s", pName);
+    loader_log(NULL, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0, "loader_gpdpa_instance_internal() unrecognized name %s", pName);
     return NULL;
 }
 
@@ -5055,7 +5066,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL loader_gpdpa_instance_terminator
     }
 
     // Don't call down the chain, this would be an infinite loop
-    loader_log(NULL, VK_DEBUG_REPORT_WARNING_BIT_EXT, 0, "loader_gpdpa_instance_terminator() unrecognized name %s", pName);
+    loader_log(NULL, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0, "loader_gpdpa_instance_terminator() unrecognized name %s", pName);
     return NULL;
 }
 
@@ -5115,7 +5126,7 @@ static VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL loader_gpa_instance_internal(VkI
     }
 
     // Don't call down the chain, this would be an infinite loop
-    loader_log(NULL, VK_DEBUG_REPORT_WARNING_BIT_EXT, 0, "loader_gpa_instance_internal() unrecognized name %s", pName);
+    loader_log(NULL, VK_DEBUG_REPORT_DEBUG_BIT_EXT, 0, "loader_gpa_instance_internal() unrecognized name %s", pName);
     return NULL;
 }
 
