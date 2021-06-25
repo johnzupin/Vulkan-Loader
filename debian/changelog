@@ -1,3 +1,75 @@
+vulkan-loader (1.2.182.0~rc1-1lunarg18.04-1) bionic; urgency=medium
+
+  [ Lenny Komow ]
+  * loader: Prevent crash from VK_KHR_display
+
+  [ Mike Schuchardt ]
+  * scripts: Switch from mkpath to makedirs
+  * build: Update to header 1.2.177
+
+  [ sfricke-samsung ]
+  * Match null queue check for vkGetDeviceQueue
+
+  [ Mike Gorchak ]
+  * Use headers in the external folder prior to the system Vulkan headers
+
+  [ Charles Giessen ]
+  * loader: Emit DEBUG for unknown function names
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.178
+  * build: Update to header 1.2.179
+
+  [ Charles Giessen ]
+  * cmake: Make loader use same CRT in debug mode
+  * test: Add framework cmake and utilities
+  * tests: Add TestICD for mocking ICD's
+  * test: Add framework platform abstraction shim
+  * test: Add test framekwork layer utility
+  * test: Add framework test_environment
+  * test: Add regression tests code
+  * tests: fix spelling in loader_validation_tests
+  * tests: Add CMake to handle Detours library
+  * loader: Add pragma once to adapters.h
+  * cmake: Only enable testing with BUILD_TESTS
+  * ci: Make linux CI run regression tests
+  * tests: Include <memory> in test_util.h
+  * loader: Silence erroneous implicit layer warning
+
+  [ Biswapriyo Nath ]
+  * CMake: Fix linking option and libraries for MinGW.
+
+  [ Jamie Madill ]
+  * GN: Support custom library name.
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.180
+
+  [ Charles Giessen ]
+  * ci: Enable regression tests in Windows CI
+  * test: Fix Windows x86 icd shim exports
+  * ci: Enable building of tests
+  * test: Delete files properly on windows
+  * test: Control process elevation on Windows
+  * test: Refactor tests that use VK_ICD_FILENAMES
+  * loader: Replace consistency checks with asserts
+  * loader: Create AddManifestFile function
+  * loader: Change VkResult when no ICDs were found
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.181
+
+  [ Christophe ]
+  * Add layer manifest version 1.2.0 to history
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.182
+
+  [ John Zupin ]
+  * packaging: update control file for 1.2.182.0 SDK
+
+ -- John Zupin <john@odin>  Fri, 25 Jun 2021 15:03:44 -0600
+
 vulkan-loader (1.2.176.0~rc2-1lunarg18.04-1) bionic; urgency=medium
 
   [ Lenny Komow ]
