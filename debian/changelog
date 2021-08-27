@@ -1,3 +1,134 @@
+vulkan-loader (1.2.189.0~rc1-1lunarg18.04-1) bionic; urgency=medium
+
+  [ Charles Giessen ]
+  * test: Fix framework to work on MacOS
+  * ci: Enable regression tests on MacOS
+  * test: Add revamped allocation tests
+  * test: Update googlestest to 1.10.0
+  * test: Delete old temp folders when starting tests/framework/test_util
+
+  [ xantares ]
+  * Loader shared lib: back to default cmake prefix
+
+  [ Bob Ellison ]
+  * copyrights: updated copyrights on MIT files
+
+  [ Charles Giessen ]
+  * docs: Add info on DXGI adapters in Windows ICD Discovery
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.183
+
+  [ Charles Giessen ]
+  * test: Remove Allocation tests from old test suite
+  * test: Rename regressions test cases
+  * test: Remove some redundant tests in old test suite
+  * test: Drop fp_ from function pointer names
+  * test: Use a new `string_eq` function instead of raw strcmp
+  * test: Update Framework Readme.md
+  * test: Use MACRO=1 in TestICD for definition style
+  * test: Flesh out TestLayer to include relevant exports
+  * test: Add Enumeration Function stubs to TestLayer
+  * test: Fix TestLayer exports on windows
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.184
+
+  [ Mark Young ]
+  * Report a warning if the number of GPUs doesn't match
+
+  [ Charles Giessen ]
+  * test: Move more old tests to new test framework
+
+  [ Mark Young ]
+  * Update contact information
+
+  [ Charles Giessen ]
+  * ci: Re-add code and commit formatting verification
+
+  [ Bob Ellison ]
+  * windows: update the loader copyright date
+
+  [ Charles Giessen ]
+  * loader: Dont return OOM on function load failure
+
+  [ Jamie Madill ]
+  * build: Disable -Wimplicit-fallthrough in GN.
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.185
+  * build: Update to header 1.2.186
+
+  [ Charles Giessen ]
+  * test: Add basic threading test
+
+  [ Mark Young ]
+  * Fix loader debug documentation
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.187
+
+  [ Charles Giessen ]
+  * test: Implemente layer create instance/device
+  * test: add CreateInstance.LayerNotPresent test
+  * test: Add noexcept in test_environment
+  * test: Update framework_config to include paths to layer binaries
+  * test: Add CreateInstance.LayerPresent test
+  * test: Make all tests call vkDestroyInstance
+  * test: Update tests/README.md
+  * test: Clear TestICDs before each test
+
+  [ Samiullah Khawaja ]
+  * Deallocate the extension lists when deleting an item from layer list
+
+  [ Charles Giessen ]
+  * test: Add simple invalid-meta layer test
+  * test: Make invalid meta layer test more comprehensive
+  * test: Make MetaLayer test add extensions
+  * test: Prevent macro collision
+
+  [ Mark Young ]
+  * Fix loader_log messages to use LOADER_ log levels
+  * Add layer and implementation-specific logging
+  * Allow "icd" as well as "implem" for VK_LOADER_DEBUG
+
+  [ Mike Schuchardt ]
+  * scripts: Use altlen instead of parsing latexmath
+  * build: Update to header 1.2.188
+
+  [ Mark Young ]
+  * Fix environment test failure.
+
+  [ Charles Giessen ]
+  * test: Revamp which linux paths are redirected
+  * loader: Reformated loader source code
+  * loader: Make use of a generated header version
+  * test: Add ELF test binaries for 32 and 64 bit
+  * test: Add linux x64 and x86 for wrong binaries
+  * test: Add windows 32/64 bit binary tests
+  * test: Simplify wrong arch tests by adding a macro
+
+  [ WenqingLiAMD ]
+  * Fix Vulkan CTS testcase bug: "create_instance_device_intentional_alloc_fail"
+
+  [ Charles Giessen ]
+  * loader: Fix accidental error propagation
+  * test: Add test for PR #639
+  * test: Use proper allocation count in tests
+  * test: Update Device Layers Match test
+  * test: Set VK_LAYER_PATH properly
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.189
+
+  [ Charles Giessen ]
+  * loader: Downgrade wrong arch errors on windows
+  * test: Add DebugUtilsWrapper
+  * test: Update 32/64 tests to check the log
+  * build: Silence MSVC warning of replacing /GR
+
+ -- John Zupin <john@odin>  Fri, 27 Aug 2021 15:58:21 -0600
+
 vulkan-loader (1.2.182.0~rc1-1lunarg18.04-1) bionic; urgency=medium
 
   [ Lenny Komow ]
