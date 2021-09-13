@@ -300,8 +300,8 @@ VKAPI_ATTR void VKAPI_CALL test_vkDestroyDevice(VkDevice device, const VkAllocat
     if (found != icd.device_handles.end()) icd.device_handles.erase(found);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceToolPropertiesEXT(VkPhysicalDevice physicalDevice, uint32_t* pToolCount,
-                                                                         VkPhysicalDeviceToolPropertiesEXT* pToolProperties) {
+VKAPI_ATTR VkResult VKAPI_CALL generic_tool_props_function(VkPhysicalDevice physicalDevice, uint32_t* pToolCount,
+                                                           VkPhysicalDeviceToolPropertiesEXT* pToolProperties) {
     if (icd.tooling_properties.size() == 0) {
         return VK_SUCCESS;
     }
@@ -316,6 +316,16 @@ VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceToolPropertiesEXT(VkPhysi
         }
     }
     return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceToolPropertiesEXT(VkPhysicalDevice physicalDevice, uint32_t* pToolCount,
+                                                                         VkPhysicalDeviceToolPropertiesEXT* pToolProperties) {
+    return generic_tool_props_function(physicalDevice, pToolCount, pToolProperties);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t* pToolCount,
+                                                                      VkPhysicalDeviceToolPropertiesEXT* pToolProperties) {
+    return generic_tool_props_function(physicalDevice, pToolCount, pToolProperties);
 }
 
 //// WSI ////
@@ -612,6 +622,128 @@ VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceSurfacePresentModesKHR(Vk
                                                                               uint32_t* pPresentModeCount,
                                                                               VkPresentModeKHR* pPresentModes) {
     FillCountPtr(icd.GetPhysDevice(physicalDevice).surface_present_modes, pPresentModeCount, pPresentModes);
+    return VK_SUCCESS;
+}
+
+// VK_KHR_display
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceDisplayPropertiesKHR(VkPhysicalDevice physicalDevice,
+                                                                            uint32_t* pPropertyCount,
+                                                                            VkDisplayPropertiesKHR* pProperties) {
+    FillCountPtr(icd.GetPhysDevice(physicalDevice).display_properties, pPropertyCount, pProperties);
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceDisplayPlanePropertiesKHR(VkPhysicalDevice physicalDevice,
+                                                                                 uint32_t* pPropertyCount,
+                                                                                 VkDisplayPlanePropertiesKHR* pProperties) {
+    FillCountPtr(icd.GetPhysDevice(physicalDevice).display_plane_properties, pPropertyCount, pProperties);
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetDisplayPlaneSupportedDisplaysKHR(VkPhysicalDevice physicalDevice, uint32_t planeIndex,
+                                                                          uint32_t* pDisplayCount, VkDisplayKHR* pDisplays) {
+    FillCountPtr(icd.GetPhysDevice(physicalDevice).displays, pDisplayCount, pDisplays);
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetDisplayModePropertiesKHR(VkPhysicalDevice physicalDevice, VkDisplayKHR display,
+                                                                  uint32_t* pPropertyCount,
+                                                                  VkDisplayModePropertiesKHR* pProperties) {
+    FillCountPtr(icd.GetPhysDevice(physicalDevice).display_mode_properties, pPropertyCount, pProperties);
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateDisplayModeKHR(VkPhysicalDevice physicalDevice, VkDisplayKHR display,
+                                                           const VkDisplayModeCreateInfoKHR* pCreateInfo,
+                                                           const VkAllocationCallbacks* pAllocator, VkDisplayModeKHR* pMode) {
+    if (nullptr != pMode) {
+        *pMode = icd.GetPhysDevice(physicalDevice).display_mode;
+    }
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetDisplayPlaneCapabilitiesKHR(VkPhysicalDevice physicalDevice, VkDisplayModeKHR mode,
+                                                                     uint32_t planeIndex,
+                                                                     VkDisplayPlaneCapabilitiesKHR* pCapabilities) {
+    if (nullptr != pCapabilities) {
+        *pCapabilities = icd.GetPhysDevice(physicalDevice).display_plane_capabilities;
+    }
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateDisplayPlaneSurfaceKHR(VkInstance instance,
+                                                                   const VkDisplaySurfaceCreateInfoKHR* pCreateInfo,
+                                                                   const VkAllocationCallbacks* pAllocator,
+                                                                   VkSurfaceKHR* pSurface) {
+    if (nullptr != pSurface) {
+        uint64_t fake_surf_handle = reinterpret_cast<uint64_t>(new uint8_t);
+        icd.surface_handles.push_back(fake_surf_handle);
+#if defined(__LP64__) || defined(_WIN64) || (defined(__x86_64__) && !defined(__ILP32__)) || defined(_M_X64) || defined(__ia64) || \
+    defined(_M_IA64) || defined(__aarch64__) || defined(__powerpc64__)
+        *pSurface = reinterpret_cast<VkSurfaceKHR>(fake_surf_handle);
+#else
+        *pSurface = fake_surf_handle;
+#endif
+    }
+    return VK_SUCCESS;
+}
+
+// VK_KHR_get_surface_capabilities2
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceSurfaceCapabilities2KHR(VkPhysicalDevice physicalDevice,
+                                                                               const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+                                                                               VkSurfaceCapabilities2KHR* pSurfaceCapabilities) {
+    if (nullptr != pSurfaceInfo && nullptr != pSurfaceCapabilities) {
+        return test_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, pSurfaceInfo->surface,
+                                                              &pSurfaceCapabilities->surfaceCapabilities);
+    }
+    return VK_SUCCESS;
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetPhysicalDeviceSurfaceFormats2KHR(VkPhysicalDevice physicalDevice,
+                                                                          const VkPhysicalDeviceSurfaceInfo2KHR* pSurfaceInfo,
+                                                                          uint32_t* pSurfaceFormatCount,
+                                                                          VkSurfaceFormat2KHR* pSurfaceFormats) {
+    if (nullptr != pSurfaceFormatCount) {
+        test_vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, pSurfaceInfo->surface, pSurfaceFormatCount, nullptr);
+        if (nullptr != pSurfaceFormats) {
+            auto& phys_dev = icd.GetPhysDevice(physicalDevice);
+            // Since the structures are different, we have to copy each item over seperately.  Since we have multiple, we
+            // have to manually copy the data here instead of calling the next function
+            for (uint32_t cnt = 0; cnt < *pSurfaceFormatCount; ++cnt) {
+                memcpy(&pSurfaceFormats[cnt].surfaceFormat, &phys_dev.surface_formats[cnt], sizeof(VkSurfaceFormatKHR));
+            }
+        }
+    }
+    return VK_SUCCESS;
+}
+
+//// misc
+VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateCommandPool(VkDevice device, const VkCommandPoolCreateInfo* pCreateInfo,
+                                                        const VkAllocationCallbacks* pAllocator, VkCommandPool* pCommandPool) {
+    if (pCommandPool != nullptr) {
+        pCommandPool = reinterpret_cast<VkCommandPool*>(0xdeadbeef);
+    }
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL test_vkDestroyCommandPool(VkDevice device, VkCommandPool commandPool,
+                                                     const VkAllocationCallbacks* pAllocator) {
+    // do nothing, leak memory for now
+}
+VKAPI_ATTR VkResult VKAPI_CALL test_vkAllocateCommandBuffers(VkDevice device, const VkCommandBufferAllocateInfo* pAllocateInfo,
+                                                             VkCommandBuffer* pCommandBuffers) {
+    if (pAllocateInfo != nullptr && pCommandBuffers != nullptr) {
+        for (size_t i = 0; i < pAllocateInfo->commandBufferCount; i++) {
+            icd.allocated_command_buffers.push_back({});
+            pCommandBuffers[i] = icd.allocated_command_buffers.back().handle;
+        }
+    }
+    return VK_SUCCESS;
+}
+
+// VK_EXT_acquire_drm_display
+VKAPI_ATTR VkResult VKAPI_CALL test_vkAcquireDrmDisplayEXT(VkPhysicalDevice physicalDevice, int32_t drmFd, VkDisplayKHR display) {
+    return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL test_vkGetDrmDisplayEXT(VkPhysicalDevice physicalDevice, int32_t drmFd, uint32_t connectorId,
+                                                       VkDisplayKHR* display) {
+    if (nullptr != display && icd.GetPhysDevice(physicalDevice).displays.size() > 0) {
+        *display = icd.GetPhysDevice(physicalDevice).displays[0];
+    }
     return VK_SUCCESS;
 }
 
@@ -921,6 +1053,9 @@ PFN_vkVoidFunction get_physical_device_func(VkInstance instance, const char* pNa
             return TO_VOID_PFN(test_vkGetPhysicalDeviceExternalFenceProperties);
     }
 
+    if (icd.supports_tooling_info_core) {
+        if (string_eq(pName, "vkGetPhysicalDeviceToolProperties")) return TO_VOID_PFN(test_vkGetPhysicalDeviceToolProperties);
+    }
     if (icd.supports_tooling_info_ext) {
         if (string_eq(pName, "vkGetPhysicalDeviceToolPropertiesEXT")) return TO_VOID_PFN(test_vkGetPhysicalDeviceToolPropertiesEXT);
     }
@@ -979,6 +1114,9 @@ PFN_vkVoidFunction get_device_func(VkDevice device, const char* pName) {
     if (string_eq(pName, "vkDestroyDevice")) return TO_VOID_PFN(test_vkDestroyDevice);
     if (string_eq(pName, "vkCreateSwapchainKHR")) return TO_VOID_PFN(test_vkCreateSwapchainKHR);
     if (string_eq(pName, "vkDestroySwapchainKHR")) return TO_VOID_PFN(test_vkDestroySwapchainKHR);
+    if (string_eq(pName, "vkCreateCommandPool")) return TO_VOID_PFN(test_vkCreateCommandPool);
+    if (string_eq(pName, "vkAllocateCommandBuffers")) return TO_VOID_PFN(test_vkAllocateCommandBuffers);
+    if (string_eq(pName, "vkDestroyCommandPool")) return TO_VOID_PFN(test_vkDestroyCommandPool);
     for (auto& function : found_phys_dev->known_device_functions) {
         if (string_eq(pName, function.name)) {
             return reinterpret_cast<PFN_vkVoidFunction>(function.function);
