@@ -1,3 +1,214 @@
+vulkan-loader (1.2.198.0~rc1-1lunarg18.04-1) bionic; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.190
+
+  [ Charles Giessen ]
+  * scripts: Remove loader_icd_init_entries duplicate
+  * test: Add TestICD DeviceGroup support
+  * test: Move DeviceGroup tests to regression suite
+  * test: Add handle_assert helper functions
+
+  [ Mark Young ]
+  * Update XDG paths
+  * Fix loader not knowing about extensions enabled in layers
+
+  [ Charles Giessen ]
+  * loader: Make all loader functions use snake_case
+  * test: Improved Test Wrapper interface
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.191
+
+  [ Charles Giessen ]
+  * loader: Move layer cleanup to a single function
+  * test: Fix extra } in layer manifest printer
+  * test: Add test for Override Meta Layer
+  * build: Alphabetize loader source file list
+  * loader: Update Copyright
+  * loader: Use #pragma once everywhere
+  * loader: Update Copyright for 2021
+  * loader: Move loader struct defs into common file
+  * loader: Add gpa_helper.c
+  * loader: Dont use TLS in dirent_on_windows
+  * loader: cJSON to use regular heap instead of TLS
+  * loader: Remove TLS
+  * loader: Move allocation functions to a header
+  * loader: Dont include C++ libraries in C++ mode
+  * loader: Shift around vk_loader_platform headers
+  * loader: Remove unneeded parts of loader_common.h
+  * loader: Make vk_loader_layer.h a proper header
+  * loader: Remove duplicate macro defines
+  * loader: Move alloca into allocation.h
+  * loader: Make _GNU_SOURCE a cmake definition
+  * loader: Make logging and getenv their own headers
+  * loader: Remove headers from cmake source list
+  * loader: Header include cleanup
+  * loader: Move init functions closer together
+  * loader: Move struct declarations into header
+  * loader: Move Windows logic to dedicated file
+  * gn: Fix gn build for refactor changes
+  * loader: Rename SetupLoaderTermPhysDevGroups
+  * loader: Move simple terminators to terminator.c
+  * loader: Make trampolineGetProcAddr snake_case
+  * loader: Handle OOM in loader_phys_dev_ext_gpa
+  * loader: Fix potential memory leak
+  * loader: Use abort to force a crash where needed
+  * loader: Format WSI error messages
+  * loader: assert if trying to malloc 0 bytes
+  * loader: Remove redundant stores
+  * loader: Get DeviceGroups early exits if 0 are found
+  * loader: Prevent stack_alloc of 0
+  * loader: Remove dead store of total_count
+  * loader: Don't pass null pointer into strcmp
+  * loader: Prevent use-after-free in error path.
+  * loader: Remove deadstore when breaking from a loop
+  * loader: Fix freeing of uninitialized list
+  * test: Add test for memory leak in setup_tramp_phys_devs
+  * build: Use generated source everywhere
+  * loader: Move disable_environment into function body
+  * loader: Reverst asserting on size 0 in malloc
+
+  [ Mark Young ]
+  * Update more logging info for the Loader
+
+  [ Charles Giessen ]
+  * test: Add callback to layers create instance and device
+  * test: Add ICD Interface V6 TestICD binary
+  * test: Add test which calls GetPDProps inside CreateInstance
+  * loader: Move struct decls to loader_common.h
+  * test: Fix 32 bit test suite build error
+
+  [ Jamie Madill ]
+  * loader: Add loader.rc to Windows GN build
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.192
+
+  [ Natalie Chouinard ]
+  * loader: Add cJSON prefix to update function
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.193
+
+  [ unknown ]
+  * build: Fix using wrong Windows SDK for VS 2015
+
+  [ Charles Giessen ]
+  * test: Isolate Env-Vars from test framework
+
+  [ Nathaniel Cesario ]
+  * build: Add UPDATE_DEPS cmake arg
+
+  [ Charles Giessen ]
+  * build: Set DLL version automatically
+  * Use CMake to define SECURE_GETENV variables
+  * build: Add RELEASE_BUILD option for Windows SDK builds
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.194
+
+  [ Charles Giessen ]
+  * build: Update update_deps.py to match VVL
+  * build: Move test dependencies to known_good.json
+  * loader: Only include loader_windows.h on windows
+
+  [ Ralf Habacker ]
+  * loader: Fix setting `libdir` in generated vulkan.pc on Windows
+
+  [ Charles Giessen ]
+  * build: Revert generated loader.rc
+  * test: Fixup XDG path handling, add XDG tests
+  * test: Add XDG & VK_LAYER_PATH tests
+  * loader: Remove old debug path printing
+  * ci: Enable tests on MacOS GithubActions
+  * test: Move more old tests to new framework
+  * test: Update ExtraLoaderTests
+  * test: Use correct path in json files
+  * test: Use correct name in def files
+  * test: remove stub functions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.195
+
+  [ Graeme Leese ]
+  * Only parse git information if .git/HEAD exists
+
+  [ Charles Giessen ]
+  * Zero-init values passed into EnumPhysDevs
+  * test: Update WrapObjects test to new framework
+  * Update README.md to remove mention of Vk-Headers
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.196
+
+  [ Charles Giessen ]
+  * Only return pre-instance functions when instance is NULL
+
+  [ Mark Young ]
+  * Re-arrange/update loader docs
+
+  [ Charles Giessen ]
+  * test: Don't add null paths for redirection
+
+  [ Eleni Maria Stea ]
+  * loader: include FreeBSD in supported platforms
+
+  [ Mark Young ]
+  * Change Implementation->Drivers
+  * Fix broken doc links in new docs
+
+  [ Charles Giessen ]
+  * Fix vkGetInstanceProcAddr not handling null instance
+
+  [ Mark Young ]
+  * Modify loader warning about physical device count
+  * Added layer debug section and pre-instance info
+
+  [ Tomek Bury ]
+  * Fix terminator for GetPhysicalDeviceToolPropertiesEXT
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.197
+
+  [ Mark Young ]
+  * Add bundling section and rename "desktop loader"
+
+  [ Eleni Maria Stea ]
+  * loader, asm_offset: define BSD_VISIBLE and fix ifdef bug
+
+  [ vladislemon ]
+  * Fix architecture detection on recent versions of GCC
+
+  [ Mark Young ]
+  * Add missing review comment fields on bundling changes.
+
+  [ Charles Giessen ]
+  * test: Fix compiler warnings in MSVC
+  * Refactor shim function definitions to its own file
+
+  [ Mark Young ]
+  * Fix GCC 11.2 build
+
+  [ Charles Giessen ]
+  * Add test for unknown physical device functions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.198
+
+  [ Charles Giessen ]
+  * Make GetPhysDevToolProps call into drivers
+  * Add test for vkGetPhysicalDeviceToolProperties
+
+  [ Rémi Bernon ]
+  * Link loader-unknown-chain with Vulkan::Headers
+
+  [ Eric Sullivan ]
+  * loader: Update assembly file names to specify their target architecture
+  * loader: Add aarch64 unknown ext chain implementation
+
+ -- John Zupin <john@odin>  Tue, 16 Nov 2021 16:44:45 -0700
+
 vulkan-loader (1.2.189.0~rc1-1lunarg18.04-1) bionic; urgency=medium
 
   [ Charles Giessen ]
