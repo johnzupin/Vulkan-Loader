@@ -1,3 +1,10 @@
+vulkan-loader (1.2.198.0~rc2-1lunarg20.04-1) focal; urgency=medium
+
+  [ Charles Giessen ]
+  * Dont call ToolProps on drivers without support
+
+ -- John Zupin <john@odin>  Thu, 18 Nov 2021 11:56:55 -0700
+
 vulkan-loader (1.2.198.0~rc1-1lunarg20.04-1) focal; urgency=medium
 
   [ Mike Schuchardt ]
