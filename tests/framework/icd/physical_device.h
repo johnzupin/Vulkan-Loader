@@ -43,12 +43,20 @@ struct PhysicalDevice {
 
     BUILDER_VECTOR(PhysicalDevice, MockQueueFamilyProperties, queue_family_properties, queue_family_properties)
     BUILDER_VECTOR(PhysicalDevice, VkFormatProperties, format_properties, format_properties)
+    BUILDER_VECTOR(PhysicalDevice, VkSparseImageFormatProperties, sparse_image_format_properties, sparse_image_format_properties)
 
     BUILDER_VECTOR(PhysicalDevice, Extension, extensions, extension)
 
     BUILDER_VALUE(PhysicalDevice, VkSurfaceCapabilitiesKHR, surface_capabilities, {})
     BUILDER_VECTOR(PhysicalDevice, VkSurfaceFormatKHR, surface_formats, surface_format)
     BUILDER_VECTOR(PhysicalDevice, VkPresentModeKHR, surface_present_modes, surface_present_mode)
+
+    BUILDER_VECTOR(PhysicalDevice, VkDisplayPropertiesKHR, display_properties, display_properties)
+    BUILDER_VECTOR(PhysicalDevice, VkDisplayPlanePropertiesKHR, display_plane_properties, display_plane_properties)
+    BUILDER_VECTOR(PhysicalDevice, VkDisplayKHR, displays, displays)
+    BUILDER_VECTOR(PhysicalDevice, VkDisplayModePropertiesKHR, display_mode_properties, display_mode_properties)
+    BUILDER_VALUE(PhysicalDevice, VkDisplayModeKHR, display_mode, {})
+    BUILDER_VALUE(PhysicalDevice, VkDisplayPlaneCapabilitiesKHR, display_plane_capabilities, {})
 
     // VkDevice handles created from this physical device
     std::vector<VkDevice> device_handles;
