@@ -5,7 +5,7 @@ Source: https://github.com/KhronosGroup/Vulkan-Loader
 Files: *
 Copyright: 2015-2019, Google Inc
            2015-2016, Google, Inc
-           2014-2021, LunarG, Inc
+           2014-2022, LunarG, Inc
            2018-2019, The ANGLE Project Authors
            2017, The Glslang Authors
            2013-2020, The Khronos Group Inc
@@ -43,9 +43,9 @@ Files: .clang-format
        tests/vk_layer_settings.txt
        tests/vk_loader_validation_tests.vcxproj.user
        vulkan.symbols.api
-Copyright: 2021, CopyrightLunarG Inc
+Copyright: 2022, CopyrightLunarG Inc
            1997-2012, Kevlin Henney
-           2015, LunarG, Inc
+           2022, LunarG, Inc
            2015-2019, LunarG, Inc. -->
            2015, The Khronos Group Inc
            2015, Valve Corporation
@@ -54,7 +54,7 @@ Copyright: 2021, CopyrightLunarG Inc
 License: Apache-2.0
 
 Files: debian/*
-Copyright: 2021, LunarG, Inc
+Copyright: 2022, LunarG, Inc
            2016, Timo Aaltonen <tjaalton@debian.org>
 License: BSD-3-clause or GPL-3 or MIT
 
