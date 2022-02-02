@@ -428,7 +428,7 @@ TEST_F(MetaLayers, DeviceExtensionInComponentLayer) {
     }
 }
 // Override meta layer missing disable environment variable still enables the layer
-TEST_F(OverrideMetaLayer, InvalidDisableEnvironment) {
+TEST_F(OverrideMetaLayer, DISABLED_InvalidDisableEnvironment) {
     env->get_test_icd().add_physical_device({});
     const char* regular_layer_name = "VK_LAYER_TestLayer";
     env->add_explicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
