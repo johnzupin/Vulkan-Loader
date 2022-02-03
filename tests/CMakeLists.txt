@@ -24,36 +24,23 @@ option(TEST_USE_THREAD_SANITIZER "Linux only: Advanced thread checking" OFF)
 include(GoogleTest)
 add_subdirectory(framework)
 
-add_executable(test_regression loader_testing_main.cpp
-    loader_alloc_callback_tests.cpp
-    loader_get_proc_addr_tests.cpp
-    loader_layer_tests.cpp
-    loader_regression_tests.cpp
-    loader_version_tests.cpp
-    loader_unknown_ext_tests.cpp)
+add_executable(
+    test_regression
+        loader_testing_main.cpp
+        loader_alloc_callback_tests.cpp
+        loader_get_proc_addr_tests.cpp
+        loader_handle_validation_tests.cpp
+        loader_layer_tests.cpp
+        loader_regression_tests.cpp
+        loader_version_tests.cpp
+        loader_unknown_ext_tests.cpp
+        loader_wsi_tests.cpp)
 target_link_libraries(test_regression PRIVATE testing_dependencies)
 
-add_executable(test_wsi loader_testing_main.cpp loader_wsi_tests.cpp)
-target_link_libraries(test_wsi PRIVATE testing_dependencies)
-
-if(UNIX AND NOT APPLE) # i.e. Linux
-    if(BUILD_WSI_XCB_SUPPORT)
-        target_include_directories(test_wsi PRIVATE ${XCB_INCLUDE_DIRS})
-        target_link_libraries(test_wsi PRIVATE ${XCB_LIBRARIES})
-    endif()
-
-    if(BUILD_WSI_XLIB_SUPPORT)
-        target_include_directories(test_wsi PRIVATE ${X11_INCLUDE_DIR})
-        target_link_libraries(test_wsi PRIVATE ${X11_LIBRARIES})
-    endif()
-
-    if(BUILD_WSI_WAYLAND_SUPPORT)
-        target_include_directories(test_wsi PRIVATE ${WAYLAND_CLIENT_INCLUDE_DIR})
-        target_link_libraries(test_wsi PRIVATE ${WAYLAND_CLIENT_LIBRARIES})
-    endif()
-endif()
-
-add_executable(test_threading loader_testing_main.cpp loader_threading_tests.cpp)
+add_executable(
+    test_threading
+        loader_testing_main.cpp
+        loader_threading_tests.cpp)
 target_link_libraries(test_threading PRIVATE testing_dependencies)
 
 if(WIN32)
