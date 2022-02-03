@@ -1,8 +1,8 @@
 /*
  *
- * Copyright (c) 2014-2021 The Khronos Group Inc.
- * Copyright (c) 2014-2021 Valve Corporation
- * Copyright (c) 2014-2021 LunarG, Inc.
+ * Copyright (c) 2014-2022 The Khronos Group Inc.
+ * Copyright (c) 2014-2022 Valve Corporation
+ * Copyright (c) 2014-2022 LunarG, Inc.
  * Copyright (C) 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -210,6 +210,7 @@ struct loader_icd_term {
     struct loader_icd_term *next;
 
     PFN_PhysDevExt phys_dev_ext[MAX_NUM_UNKNOWN_EXTS];
+    bool supports_get_dev_prop_2;
 };
 
 // Per ICD library structure
@@ -226,9 +227,13 @@ struct loader_instance_dispatch_table {
     PFN_PhysDevExt phys_dev_ext[MAX_NUM_UNKNOWN_EXTS];
 };
 
+// Unique magic number identifier for the loader.
+#define LOADER_MAGIC_NUMBER 0x10ADED010110ADEDUL
+
 // Per instance structure
 struct loader_instance {
     struct loader_instance_dispatch_table *disp;  // must be first entry in structure
+    uint64_t magic;                               // Should be LOADER_MAGIC_NUMBER
 
     // Vulkan API version the app is intending to use.
     uint16_t app_api_major_version;
@@ -328,6 +333,8 @@ struct loader_instance {
 #endif
     bool wsi_display_enabled;
     bool wsi_display_props2_enabled;
+    bool create_terminator_invalid_extension;
+    bool supports_get_dev_prop_2;
 };
 
 // VkPhysicalDevice requires special treatment by loader.  Firstly, terminator
@@ -342,11 +349,15 @@ struct loader_instance {
 // trampoline code wraps the VkPhysicalDevice this means all loader trampoline
 // code that passes a VkPhysicalDevice should unwrap it.
 
+// Unique identifier for physical devices
+#define PHYS_TRAMP_MAGIC_NUMBER 0x10ADED020210ADEDUL
+
 // Per enumerated PhysicalDevice structure, used to wrap in trampoline code and
 // also same structure used to wrap in terminator code
 struct loader_physical_device_tramp {
     struct loader_instance_dispatch_table *disp;  // must be first entry in structure
     struct loader_instance *this_instance;
+    uint64_t magic;             // Should be PHYS_TRAMP_MAGIC_NUMBER
     VkPhysicalDevice phys_dev;  // object from layers/loader terminator
 };
 
@@ -356,6 +367,44 @@ struct loader_physical_device_term {
     struct loader_icd_term *this_icd_term;
     uint8_t icd_index;
     VkPhysicalDevice phys_dev;  // object from ICD
+};
+
+#ifdef LOADER_ENABLE_LINUX_SORT
+// Structure for storing the relevent device information for selecting a device.
+// NOTE: Needs to be defined here so we can store this content in the term structrue
+//       for quicker sorting.
+struct LinuxSortedDeviceInfo {
+    // Associated Vulkan Physical Device
+    VkPhysicalDevice physical_device;
+    bool default_device;
+
+    // Loader specific items about the driver providing support for this physical device
+    uint32_t icd_index;
+    struct loader_icd_term *icd_term;
+
+    // Some generic device properties
+    VkPhysicalDeviceType device_type;
+    char device_name[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
+    uint32_t vendor_id;
+    uint32_t device_id;
+
+    // PCI information on this device
+    bool has_pci_bus_info;
+    uint32_t pci_domain;
+    uint32_t pci_bus;
+    uint32_t pci_device;
+    uint32_t pci_function;
+};
+#endif  // LOADER_ENABLE_LINUX_SORT
+
+// Per enumerated PhysicalDeviceGroup structure, used to wrap in terminator code
+struct loader_physical_device_group_term {
+    struct loader_icd_term *this_icd_term;
+    uint8_t icd_index;
+    VkPhysicalDeviceGroupProperties group_props;
+#ifdef LOADER_ENABLE_LINUX_SORT
+    struct LinuxSortedDeviceInfo internal_device_info[VK_MAX_DEVICE_GROUP_SIZE];
+#endif  // LOADER_ENABLE_LINUX_SORT
 };
 
 struct loader_struct {

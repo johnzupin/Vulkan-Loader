@@ -88,8 +88,9 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceImageFormatProperties
     struct loader_physical_device_term *phys_dev_term = (struct loader_physical_device_term *)physicalDevice;
     struct loader_icd_term *icd_term = phys_dev_term->this_icd_term;
     if (NULL == icd_term->dispatch.GetPhysicalDeviceImageFormatProperties) {
-        loader_log(icd_term->this_instance, VULKAN_LOADER_ERROR_BIT, 0,
-                   "Encountered the vkEnumerateDeviceLayerProperties terminator.  This means a layer improperly continued.");
+        loader_log(
+            icd_term->this_instance, VULKAN_LOADER_ERROR_BIT, 0,
+            "The icd's vkGetPhysicalDeviceImageFormatProperties was null, returning with VK_ERROR_INITIALIZATION_FAILED instead.");
         return VK_ERROR_INITIALIZATION_FAILED;
     }
     return icd_term->dispatch.GetPhysicalDeviceImageFormatProperties(phys_dev_term->phys_dev, format, type, tiling, usage, flags,
@@ -586,4 +587,25 @@ VKAPI_ATTR void VKAPI_CALL terminator_GetPhysicalDeviceExternalFenceProperties(
                        "pExternalFenceProperties->pNext - this struct will be ignored");
         }
     }
+}
+
+// 1.3 Core terminators
+
+VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t *pToolCount,
+                                                                          VkPhysicalDeviceToolProperties *pToolProperties) {
+    struct loader_physical_device_term *phys_dev_term = (struct loader_physical_device_term *)physicalDevice;
+    struct loader_icd_term *icd_term = phys_dev_term->this_icd_term;
+
+    VkPhysicalDeviceProperties properties;
+    if (icd_term->dispatch.GetPhysicalDeviceProperties) {
+        icd_term->dispatch.GetPhysicalDeviceProperties(phys_dev_term->phys_dev, &properties);
+
+        if (VK_VERSION_MINOR(properties.apiVersion) >= 3 && icd_term->dispatch.GetPhysicalDeviceToolProperties) {
+            return icd_term->dispatch.GetPhysicalDeviceToolProperties(phys_dev_term->phys_dev, pToolCount, pToolProperties);
+        }
+    }
+
+    // In the case the driver didn't support the extension, make sure that the first layer doesn't find the count uninitialized
+    *pToolCount = 0;
+    return VK_SUCCESS;
 }
