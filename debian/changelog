@@ -1,3 +1,141 @@
+vulkan-loader (1.3.204.0~rc1-1lunarg20.04-1) focal; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.199
+
+  [ Charles Giessen ]
+  * Dont call ToolProps on drivers without support
+
+  [ Mark Young ]
+  * Update loader to include handle validation
+  * Fix validation_layer_test failures from handle validation change
+  * Fix the spelling of Manfiest in docs and loader
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.200
+
+  [ Joel Winarske ]
+  * vulkan.pc cross-compile fix
+
+  [ Charles Giessen ]
+  * Fix error message in GetPhysDevImageFormatProps
+  * Fix leaks in Handle Validation Tests
+  * Fix readlink error in asm_offset on linux
+  * Use windows-latest in github actions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.201
+
+  [ Charles Giessen ]
+  * Fix per-platform defines in test framework not showing up
+
+  [ Mark Young ]
+  * Fix handle validation crash in RenderDoc
+
+  [ Charles Giessen ]
+  * Revert to old behavior in GIPA for old apps
+  * Fix test framework leaking registry entries
+  * Fix crash from Null instance layer or extension ptr
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.202
+
+  [ Charles Giessen ]
+  * Fix InstWrapper not checking instance creation
+  * Add test for no drivers and no physical devices
+  * Add Builder Pattern helpers to test framework
+  * Use builders in test framework components
+  * Refactor tests FrameworkEnvironment class
+  * Refactor TestLayer framework interface
+  * Fix Test folders and registry cleaning logic
+  * Use std::function in Layer callbacks
+  * Tests to use unique layer names
+
+  [ Dave Airlie ]
+  * loader/aarch64: attempt to avoid text relocations in the unknown code
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.203
+
+  [ Simon McVittie ]
+  * loader: Check for processor of compiler, not processor of build system
+  * loader: Compile x86-specific code on x86 Linux
+
+  [ Mark Young ]
+  * Add more WSI tests, and fix some compiler warnings.
+  * Fix debug utils wrapping in tests
+  * Add device extension layer tests
+  * Add layer tests for instance extension support
+  * Remove unnecessary code in test
+
+  [ Charles Giessen ]
+  * Tests separate 1.1 and VK_KHR_get_phys_dev_props2
+  * Fixup phys_dev_inst_ext_tests
+  * Add 1.2.1 as valid Layer Manifest version
+
+  [ Mark Young ]
+  * Consistent loader device ordering
+
+  [ Charles Giessen ]
+  * Add test for manually enabled implicit layer
+  * Fix layer manifest version check
+  * Log meta-layer messages when inst is NULL
+  * Check for duplicates before adding layer
+  * Fix layers not being removed by meta-layer
+  * Add meta-layer versioning tests
+  * Add test for older implicit layer version
+
+  [ Yilong Li ]
+  * murmurhash: Fix an undefined behavior when hashing function names
+
+  [ Charles Giessen ]
+  * Add VK_LOADER_TEST_LOADER_PATH env-var for tests
+  * Enable Address Sanitizser in Github Actions
+
+  [ Mark Young ]
+  * Fix issue #802
+
+  [ Ari Suonpää ]
+  * Fix writing to filtered extension list
+
+  [ Alexis Hetu ]
+  * Add support for building on ChromeOS
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.204
+
+  [ Charles Giessen ]
+  * loader: Add GetToolinInfo trampoline/terminator
+  * loader: Add 1.3 symbols defs to appropriate files
+  * loader: Add core 1.3 function to gpa_helper
+  * loader: Add manual trampolines for 1.3
+  * loader: Add basic 1.3 tests
+  * Check for version 1.3 in GetP.D.ToolProperties
+  * TestICD return features, props, & memprops
+  * Simplify test framework FolderManager write function
+  * Add many meta-layer tests
+  * Add check_permutation test helper
+  * Add meta layer fields to layer manifest in tests
+  * Add meta layer blacklist test
+  * Fixup tests/README to use newlines for sentences
+  * Make layer tests specify number of extensions
+  * Add TestLayerDetails helper struct
+  * Add override_paths tests for OverrideLayer
+  * Update LoaderLayerInterface.md documentation
+  * Use size_t instead of uint32_t in test_icd
+
+  [ Mark Young ]
+  * Fix Linux sort order crash
+
+  [ John Zupin ]
+  * packaging: update copyright
+
+  [ Charles Giessen ]
+  * Fix incorrect indexing of local_phys_dev_groups
+  * Disable OverrideMetaLayer.InvalidDisableEnvironment
+
+ -- John Zupin <john@odin>  Thu, 03 Feb 2022 15:27:25 -0700
+
 vulkan-loader (1.2.198.1~rc1-1lunarg20.04-1) focal; urgency=medium
 
   [ Charles Giessen ]
