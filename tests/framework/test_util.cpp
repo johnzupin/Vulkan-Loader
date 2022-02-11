@@ -67,15 +67,15 @@ bool set_env_var(std::string const& name, std::string const& value) {
 }
 bool remove_env_var(std::string const& name) { return SetEnvironmentVariableA(name.c_str(), nullptr); }
 #define ENV_VAR_BUFFER_SIZE 4096
-std::string get_env_var(std::string const& name, bool report_failure) {
+std::string get_env_var(std::string const& name) {
     std::string value;
     value.resize(ENV_VAR_BUFFER_SIZE);
     DWORD ret = GetEnvironmentVariable(name.c_str(), (LPSTR)value.c_str(), ENV_VAR_BUFFER_SIZE);
     if (0 == ret) {
-        if (report_failure) print_error_message(ERROR_ENVVAR_NOT_FOUND, "GetEnvironmentVariable");
+        print_error_message(ERROR_ENVVAR_NOT_FOUND, "GetEnvironmentVariable");
         return std::string();
     } else if (ENV_VAR_BUFFER_SIZE < ret) {
-        if (report_failure) std::cerr << "Not enough space to write environment variable" << name << "\n";
+        std::cerr << "Not enough space to write environment variable" << name << "\n";
         return std::string();
     } else {
         value.resize(ret);
@@ -96,28 +96,6 @@ std::string get_env_var(std::string const& name, bool report_failure) {
 }
 #endif
 
-template <typename T>
-void print_vector_of_t(std::string& out, const char* object_name, std::vector<T> const& vec) {
-    if (vec.size() > 0) {
-        out += std::string(",\n\t\t\"") + object_name + "\": [";
-        for (size_t i = 0; i < vec.size(); i++) {
-            if (i > 0) out += ",\t\t\t";
-            out += "\n\t\t\t" + vec.at(i).get_manifest_str();
-        }
-        out += "\n\t\t]";
-    }
-}
-void print_vector_of_strings(std::string& out, const char* object_name, std::vector<std::string> const& strings) {
-    if (strings.size() > 0) {
-        out += std::string(",\n\t\t\"") + object_name + "\": [";
-        for (size_t i = 0; i < strings.size(); i++) {
-            if (i > 0) out += ",\t\t\t";
-            out += "\"" + fs::fixup_backslashes_in_path(strings.at(i)) + "\"";
-        }
-        out += "]";
-    }
-}
-
 std::string ManifestICD::get_manifest_str() const {
     std::string out;
     out += "{\n";
@@ -133,8 +111,15 @@ std::string ManifestICD::get_manifest_str() const {
 std::string ManifestLayer::LayerDescription::Extension::get_manifest_str() const {
     std::string out;
     out += "{ \"name\":\"" + name + "\",\n\t\t\t\"spec_version\":\"" + std::to_string(spec_version) + "\"";
-    print_vector_of_strings(out, "entrypoints", entrypoints);
-    out += "\n\t\t\t}";
+    if (entrypoints.size() > 0) {
+        out += ",\n\t\t\t\"entrypoints\": [";
+        for (size_t i = 0; i < entrypoints.size(); i++) {
+            if (i > 0) out += ", ";
+            out += "\"" + entrypoints.at(i) + "\"";
+        }
+        out += "]";
+    }
+    out += "\t\t\t}";
     return out;
 }
 
@@ -149,20 +134,54 @@ std::string ManifestLayer::LayerDescription::get_manifest_str() const {
     out += "\t\t\"api_version\": \"" + version_to_string(api_version) + "\",\n";
     out += "\t\t\"implementation_version\":\"" + std::to_string(implementation_version) + "\",\n";
     out += "\t\t\"description\": \"" + description + "\"";
-    print_vector_of_t(out, "functions", functions);
-    print_vector_of_t(out, "instance_extensions", instance_extensions);
-    print_vector_of_t(out, "device_extensions", device_extensions);
-    if (!enable_environment.empty()) {
-        out += ",\n\t\t\"enable_environment\": { \"" + enable_environment + "\": \"1\" }";
+    if (functions.size() > 0) {
+        out += ",\n\t\t\"functions\": {";
+        for (size_t i = 0; i < functions.size(); i++) {
+            if (i > 0) out += ",";
+            out += "\n\t\t\t" + functions.at(i).get_manifest_str();
+        }
+        out += "\n\t\t}";
     }
-    if (!disable_environment.empty()) {
-        out += ",\n\t\t\"disable_environment\": { \"" + disable_environment + "\": \"1\" }";
+    if (instance_extensions.size() > 0) {
+        out += ",\n\t\t\"instance_extensions\": [";
+        for (size_t i = 0; i < instance_extensions.size(); i++) {
+            if (i > 0) out += ",";
+            out += "\n\t\t\t" + instance_extensions.at(i).get_manifest_str();
+        }
+        out += "\n\t\t]";
     }
-    print_vector_of_strings(out, "component_layers", component_layers);
-    print_vector_of_strings(out, "blacklisted_layers", blacklisted_layers);
-    print_vector_of_strings(out, "override_paths", override_paths);
-    print_vector_of_strings(out, "pre_instance_functions", pre_instance_functions);
-
+    if (device_extensions.size() > 0) {
+        out += ",\n\t\t\"device_extensions\": [";
+        for (size_t i = 0; i < device_extensions.size(); i++) {
+            if (i > 0) out += ",";
+            out += "\n\t\t\t" + device_extensions.at(i).get_manifest_str();
+        }
+        out += "\n\t\t]";
+    }
+    if (enable_environment.size() > 0) {
+        out += ",\n\t\t\"enable_environment\": { \"" + enable_environment + "\": \"1\"";
+        out += "\n\t\t}";
+    }
+    if (disable_environment.size() > 0) {
+        out += ",\n\t\t\"disable_environment\": { \"" + disable_environment + "\": \"1\"";
+        out += "\n\t\t}";
+    }
+    if (component_layers.size() > 0) {
+        out += ",\n\t\t\"component_layers\": [";
+        for (size_t i = 0; i < component_layers.size(); i++) {
+            if (i > 0) out += ", ";
+            out += "\"" + component_layers.at(i) + "\"";
+        }
+        out += "]\n";
+    }
+    if (pre_instance_functions.size() > 0) {
+        out += ",\n\t\t\"pre_instance_functions\": [";
+        for (size_t i = 0; i < pre_instance_functions.size(); i++) {
+            if (i > 0) out += ", ";
+            out += "\"" + pre_instance_functions.at(i) + "\"";
+        }
+        out += "]\n\t\t}";
+    }
     out += "\n\t}";
     return out;
 }
@@ -228,7 +247,6 @@ std::string fixup_backslashes_in_path(std::string const& in_path) {
     }
     return out;
 }
-fs::path fixup_backslashes_in_path(fs::path const& in_path) { return fixup_backslashes_in_path(in_path.str()); }
 
 path& path::operator+=(path const& in) {
     contents += in.contents;
@@ -344,25 +362,11 @@ int delete_folder(path const& folder) {
         // nothing to delete
         return 0;
     }
-    std::string search_path = folder.str() + "/*.*";
-    std::string s_p = folder.str() + "/";
-    WIN32_FIND_DATA fd;
-    HANDLE hFind = ::FindFirstFileA(search_path.c_str(), &fd);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (!string_eq(fd.cFileName, ".") && !string_eq(fd.cFileName, "..")) {
-                    delete_folder(s_p + fd.cFileName);
-                }
-            } else {
-                std::string child_name = s_p + fd.cFileName;
-                DeleteFile(child_name.c_str());
-            }
-        } while (::FindNextFile(hFind, &fd));
-        ::FindClose(hFind);
-        _rmdir(folder.c_str());
+    bool ret = RemoveDirectoryA(folder.c_str());
+    if (ret == 0) {
+        print_error_message(ERROR_REMOVEDIRECTORY_FAILED, "RemoveDirectoryA");
     }
-    return 0;
+    return ret;
 #else
     DIR* dir = opendir(folder.c_str());
     if (!dir) {
@@ -398,15 +402,10 @@ FolderManager::FolderManager(path root_path, std::string name, DebugMode debug) 
     create_folder(folder);
 }
 FolderManager::~FolderManager() {
-    auto list_of_files_to_delete = files;
-    // remove(file) modifies the files variable, copy the list before deleting it
-    // Note: the allocation tests currently leak the loaded driver handles because in an OOM scenario the loader doesn't bother
-    // removing those. Since this is in an OOM situation, it is a low priority to fix. It does have the effect that Windows will
-    // be unable to delete the binaries that were leaked.
-    for (auto& file : list_of_files_to_delete) {
+    for (auto& file : files) {
         if (debug >= DebugMode::log) std::cout << "Removing manifest " << file << " at " << (folder / file).str() << "\n";
         if (debug != DebugMode::no_delete) {
-            remove(file);
+            std::remove((folder / file).c_str());
         }
     }
     if (debug != DebugMode::no_delete) {
@@ -416,21 +415,38 @@ FolderManager::~FolderManager() {
         std::cout << "Deleting folder " << folder.str() << "\n";
     }
 }
-path FolderManager::write_manifest(std::string const& name, std::string const& contents) {
+path FolderManager::write(std::string const& name, ManifestICD const& icd_manifest) {
     path out_path = folder / name;
     auto found = std::find(files.begin(), files.end(), name);
     if (found != files.end()) {
-        std::cout << "Overwriting manifest " << name << ". Was this intended?\n";
+        if (debug >= DebugMode::log) std::cout << "Writing icd manifest to " << name << "\n";
     } else {
-        if (debug >= DebugMode::log) std::cout << "Creating manifest " << name << " at " << out_path.str() << "\n";
+        if (debug >= DebugMode::log) std::cout << "Creating icd manifest " << name << " at " << out_path.str() << "\n";
         files.emplace_back(name);
     }
     auto file = std::ofstream(out_path.str(), std::ios_base::trunc | std::ios_base::out);
     if (!file) {
-        std::cerr << "Failed to create manifest " << name << " at " << out_path.str() << "\n";
+        std::cerr << "Failed to create icd manifest " << name << " at " << out_path.str() << "\n";
         return out_path;
     }
-    file << contents << std::endl;
+    file << icd_manifest.get_manifest_str() << std::endl;
+    return out_path;
+}
+path FolderManager::write(std::string const& name, ManifestLayer const& layer_manifest) {
+    path out_path = folder / name;
+    auto found = std::find(files.begin(), files.end(), name);
+    if (found != files.end()) {
+        if (debug >= DebugMode::log) std::cout << "Writing layer manifest to " << name << "\n";
+    } else {
+        if (debug >= DebugMode::log) std::cout << "Creating layer manifest " << name << " at " << out_path.str() << "\n";
+        files.emplace_back(name);
+    }
+    auto file = std::ofstream(out_path.str(), std::ios_base::trunc | std::ios_base::out);
+    file << layer_manifest.get_manifest_str() << std::endl;
+    if (!file) {
+        std::cerr << "Failed to create icd manifest " << name << " at " << out_path.str() << "\n";
+        return out_path;
+    }
     return out_path;
 }
 // close file handle, delete file, remove `name` from managed file list.
@@ -438,17 +454,13 @@ void FolderManager::remove(std::string const& name) {
     path out_path = folder / name;
     auto found = std::find(files.begin(), files.end(), name);
     if (found != files.end()) {
-        if (debug >= DebugMode::log) std::cout << "Removing file " << name << " at " << out_path.str() << "\n";
+        if (debug >= DebugMode::log) std::cout << "Removing manifest " << name << " at " << out_path.str() << "\n";
         if (debug != DebugMode::no_delete) {
-            int rc = std::remove(out_path.c_str());
-            if (rc != 0 && debug >= DebugMode::log) {
-                std::cerr << "Failed to remove file " << name << " at " << out_path.str() << "\n";
-            }
-
+            std::remove(out_path.c_str());
             files.erase(found);
         }
     } else {
-        if (debug >= DebugMode::log) std::cout << "Couldn't remove file " << name << " at " << out_path.str() << ".\n";
+        if (debug >= DebugMode::log) std::cout << "Couldn't remove manifest " << name << " at " << out_path.str() << ".\n";
     }
 }
 
@@ -458,8 +470,6 @@ path FolderManager::copy_file(path const& file, std::string const& new_name) {
     auto found = std::find(files.begin(), files.end(), new_name);
     if (found != files.end()) {
         if (debug >= DebugMode::log) std::cout << "File location already contains" << new_name << ". Is this a bug?\n";
-    } else if (file.str() == new_filepath.str()) {
-        if (debug >= DebugMode::log) std::cout << "Trying to copy " << new_name << " into itself. Is this a bug?\n";
     } else {
         if (debug >= DebugMode::log) std::cout << "Copying file" << file.str() << " to " << new_filepath.str() << "\n";
         files.emplace_back(new_name);
@@ -471,7 +481,7 @@ path FolderManager::copy_file(path const& file, std::string const& new_name) {
     }
     std::ofstream dst(new_filepath.str(), std::ios::binary);
     if (!dst) {
-        std::cerr << "Failed to create file " << new_filepath.str() << " for copying to\n";
+        std::cerr << "Failed to create file " << file.str() << " for copying to\n";
         return new_filepath;
     }
     dst << src.rdbuf();
@@ -482,16 +492,7 @@ path FolderManager::copy_file(path const& file, std::string const& new_name) {
 bool string_eq(const char* a, const char* b) noexcept { return strcmp(a, b) == 0; }
 bool string_eq(const char* a, const char* b, size_t len) noexcept { return strncmp(a, b, len) == 0; }
 
-fs::path get_loader_path() {
-    auto loader_path = fs::path(FRAMEWORK_VULKAN_LIBRARY_PATH);
-    auto env_var_res = get_env_var("VK_LOADER_TEST_LOADER_PATH", false);
-    if (!env_var_res.empty()) {
-        loader_path = fs::path(env_var_res);
-    }
-    return loader_path;
-}
-
-VulkanFunctions::VulkanFunctions() : loader(get_loader_path()) {
+VulkanFunctions::VulkanFunctions() : loader(FRAMEWORK_VULKAN_LIBRARY_PATH) {
     // clang-format off
     vkGetInstanceProcAddr = loader.get_symbol<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
     vkEnumerateInstanceExtensionProperties = loader.get_symbol<PFN_vkEnumerateInstanceExtensionProperties>("vkEnumerateInstanceExtensionProperties");
@@ -565,7 +566,7 @@ VulkanFunctions::VulkanFunctions() : loader(get_loader_path()) {
     vkCreateMacOSSurfaceMVK = loader.get_symbol<PFN_vkCreateMacOSSurfaceMVK>("vkCreateMacOSSurfaceMVK");
 #endif  // VK_USE_PLATFORM_MACOS_MVK
 #ifdef VK_USE_PLATFORM_METAL_EXT
-    vkCreateMetalSurfaceEXT = loader.get_symbol<PFN_vkCreateMetalSurfaceEXT>("vkCreateMetalSurfaceEXT");
+    vkCreateMetalSurfaceEXT = loader.get_symbol<PFN_vkCreateMetalSurfaceEXT>("vkCreateMetalSurfaceEXT")
 #endif  // VK_USE_PLATFORM_METAL_EXT
 #ifdef VK_USE_PLATFORM_SCREEN_QNX
     vkCreateScreenSurfaceQNX = loader.get_symbol<PFN_vkCreateScreenSurfaceQNX>("vkCreateScreenSurfaceQNX");
@@ -595,29 +596,65 @@ VulkanFunctions::VulkanFunctions() : loader(get_loader_path()) {
 }
 
 InstanceCreateInfo::InstanceCreateInfo() {
-    instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 }
 
 VkInstanceCreateInfo* InstanceCreateInfo::get() noexcept {
-    application_info.pApplicationName = app_name.c_str();
-    application_info.pEngineName = engine_name.c_str();
-    application_info.applicationVersion = app_version;
-    application_info.engineVersion = engine_version;
-    application_info.apiVersion = api_version;
-    instance_info.pApplicationInfo = &application_info;
-    instance_info.enabledLayerCount = static_cast<uint32_t>(enabled_layers.size());
-    instance_info.ppEnabledLayerNames = enabled_layers.data();
-    instance_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extensions.size());
-    instance_info.ppEnabledExtensionNames = enabled_extensions.data();
-    return &instance_info;
+    app_info.pApplicationName = app_name.c_str();
+    app_info.pEngineName = engine_name.c_str();
+    app_info.applicationVersion = app_version;
+    app_info.engineVersion = engine_version;
+    app_info.apiVersion = api_version;
+    inst_info.pApplicationInfo = &app_info;
+    inst_info.enabledLayerCount = static_cast<uint32_t>(enabled_layers.size());
+    inst_info.ppEnabledLayerNames = enabled_layers.data();
+    inst_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extensions.size());
+    inst_info.ppEnabledExtensionNames = enabled_extensions.data();
+    return &inst_info;
+}
+InstanceCreateInfo& InstanceCreateInfo::set_application_name(std::string app_name) {
+    this->app_name = app_name;
+    return *this;
+}
+InstanceCreateInfo& InstanceCreateInfo::set_engine_name(std::string engine_name) {
+    this->engine_name = engine_name;
+    return *this;
+}
+InstanceCreateInfo& InstanceCreateInfo::set_app_version(uint32_t app_version) {
+    this->app_version = app_version;
+    return *this;
+}
+InstanceCreateInfo& InstanceCreateInfo::set_engine_version(uint32_t engine_version) {
+    this->engine_version = engine_version;
+    return *this;
+}
+InstanceCreateInfo& InstanceCreateInfo::set_api_version(uint32_t api_version) {
+    this->api_version = api_version;
+    return *this;
 }
 InstanceCreateInfo& InstanceCreateInfo::set_api_version(uint32_t major, uint32_t minor, uint32_t patch) {
     this->api_version = VK_MAKE_API_VERSION(0, major, minor, patch);
     return *this;
 }
+InstanceCreateInfo& InstanceCreateInfo::add_layer(const char* layer_name) {
+    enabled_layers.push_back(layer_name);
+    return *this;
+}
+InstanceCreateInfo& InstanceCreateInfo::add_extension(const char* ext_name) {
+    enabled_extensions.push_back(ext_name);
+    return *this;
+}
 
-DeviceQueueCreateInfo::DeviceQueueCreateInfo() { queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO; }
+DeviceQueueCreateInfo::DeviceQueueCreateInfo() { queue.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO; }
+DeviceQueueCreateInfo& DeviceQueueCreateInfo::add_priority(float priority) {
+    priorities.push_back(priority);
+    return *this;
+}
+DeviceQueueCreateInfo& DeviceQueueCreateInfo::set_props(VkQueueFamilyProperties props) {
+    queue.queueCount = props.queueCount;
+    return *this;
+}
 
 VkDeviceCreateInfo* DeviceCreateInfo::get() noexcept {
     dev.enabledLayerCount = static_cast<uint32_t>(enabled_layers.size());
@@ -630,4 +667,18 @@ VkDeviceCreateInfo* DeviceCreateInfo::get() noexcept {
     dev.queueCreateInfoCount = static_cast<uint32_t>(queue_infos.size());
     dev.pQueueCreateInfos = queue_infos.data();
     return &dev;
+}
+DeviceCreateInfo& DeviceCreateInfo::add_layer(const char* layer_name) {
+    enabled_layers.push_back(layer_name);
+
+    return *this;
+}
+DeviceCreateInfo& DeviceCreateInfo::add_extension(const char* ext_name) {
+    enabled_extensions.push_back(ext_name);
+
+    return *this;
+}
+DeviceCreateInfo& DeviceCreateInfo::add_device_queue(DeviceQueueCreateInfo queue_info_detail) {
+    queue_info_details.push_back(queue_info_detail);
+    return *this;
 }
