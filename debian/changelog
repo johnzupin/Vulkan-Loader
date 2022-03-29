@@ -1,3 +1,271 @@
+vulkan-loader (1.3.209.0~rc1-1lunarg20.04-1) focal; urgency=medium
+
+  [ Mark Young ]
+  * Add loader policy statements
+
+  [ Dave Airlie ]
+  * loader/aarch64: attempt to avoid text relocations in the unknown code
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.2.203
+
+  [ Simon McVittie ]
+  * loader: Check for processor of compiler, not processor of build system
+  * loader: Compile x86-specific code on x86 Linux
+
+  [ Mark Young ]
+  * Fix loader phys dev termin for physical device extensions.
+  * Add more WSI tests, and fix some compiler warnings.
+  * Fix debug utils wrapping in tests
+  * Add device extension layer tests
+  * Add layer tests for instance extension support
+  * Fix a few code review snippets
+  * Remove unnecessary code in test
+
+  [ Charles Giessen ]
+  * Fallback to 2KHR terminators if available
+  * Tests separate 1.1 and VK_KHR_get_phys_dev_props2
+  * Fixup phys_dev_inst_ext_tests
+  * Add 1.2.1 as valid Layer Manifest version
+
+  [ Mark Young ]
+  * Move the LDP_DRIVER_6 message to a warning for now
+  * Consistent loader device ordering
+
+  [ Charles Giessen ]
+  * Add test for manually enabled implicit layer
+  * Fix layer manifest version check
+  * Log meta-layer messages when inst is NULL
+  * Check for duplicates before adding layer
+  * Fix layers not being removed by meta-layer
+  * Add meta-layer versioning tests
+  * Add test for older implicit layer version
+
+  [ Yilong Li ]
+  * murmurhash: Fix an undefined behavior when hashing function names
+
+  [ Charles Giessen ]
+  * Add VK_LOADER_TEST_LOADER_PATH env-var for tests
+  * Enable Address Sanitizser in Github Actions
+  * Downgrade all policy messages from ERROR to WARN
+
+  [ Mark Young ]
+  * Fix issue #802
+
+  [ Ari Suonpää ]
+  * Fix writing to filtered extension list
+
+  [ Alexis Hetu ]
+  * Add support for building on ChromeOS
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.204
+
+  [ Charles Giessen ]
+  * loader: Add GetToolinInfo trampoline/terminator
+  * loader: Add 1.3 symbols defs to appropriate files
+  * loader: Add core 1.3 function to gpa_helper
+  * loader: Add manual trampolines for 1.3
+  * loader: Add basic 1.3 tests
+  * Check for version 1.3 in GetP.D.ToolProperties
+  * TestICD return features, props, & memprops
+  * Remove redundant layer validity check
+  * Simplify test framework FolderManager write function
+  * Cleanup loader layer removal code
+  * Add many meta-layer tests
+  * Add check_permutation test helper
+  * Add meta layer fields to layer manifest in tests
+  * Add meta layer blacklist test
+  * Fixup tests/README to use newlines for sentences
+  * Make layer tests specify number of extensions
+  * Add TestLayerDetails helper struct
+  * Fix loader manifest version checks
+  * Add override_paths tests for OverrideLayer
+  * Update LoaderLayerInterface.md documentation
+  * Use size_t instead of uint32_t in test_icd
+
+  [ Kevin McCullough ]
+  * VK_NN_vi_surface WSI implementation
+  * Add VK_NN_vi_surface to WSI extension names array
+
+  [ Mark Young ]
+  * Fix Linux sort order crash
+  * Test EnumPhysDev to make sure handles don't change
+
+  [ Charles Giessen ]
+  * Add test for implicit layer with 0.1 API version
+  * Use VK_API_VERSION_XXX macros everywhere
+  * Warn when the apiVersion's variant isn't 0
+  * Update tests to use correct version macro
+  * Detect Variant versions in given api versions
+  * Skip ICD's with non zero variant value
+  * Refactor json and API version parsing code
+  * Ignore layers with non zero variant value
+  * Add wrong Variant tests
+  * Fix warning for using wrong variant layers
+
+  [ Mark Young ]
+  * loader log error if a requested layer not loaded
+  * Add tests to validate layer extensions
+
+  [ Adam Jackson ]
+  * loader: Try to handle ICD failure in vkEnumeratePhysicalDevices
+
+  [ Charles Giessen ]
+  * Fix incorrect indexing of local_phys_dev_groups
+
+  [ Mark Young ]
+  * Add a few tests to verify the vkGet***ProcAddr commands
+  * Add tests to verify extension support in physical devices
+  * Verify GIPA on device extensions
+
+  [ Brad Grantham ]
+  * use the correct instance
+
+  [ Charles Giessen ]
+  * Make vkGetInstanceProcAddr able to get itself
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.205
+
+  [ Charles Giessen ]
+  * Remove Instance and Device extension logging
+  * Update Docs table of contents
+
+  [ Mark Young ]
+  * Fix Apple build
+  * Add DebugReport
+  * Update loader VUID messages
+  * Fix loader logging of VUIDs
+  * Add debug utils loader testing
+
+  [ Charles Giessen ]
+  * Dont return an error for 0 physical device extensions
+  * Test when there are no devices or device extensions
+  * MetaLayer version checking had paren in wrong place
+  * Clarify behavior of override_paths + VK_LAYER_PATH
+  * Update Windows runtime installer copyright
+
+  [ Mark Young ]
+  * Test layer pre-instance functions
+  * Fix NULL check and make a few more consistent
+
+  [ Charles Giessen ]
+  * Fix Win32 Unknown Device function handling
+  * Update tests function loading implementation
+  * Expand unknown function handling tests
+
+  [ Mark Young ]
+  * Add a test to verify that VK_INSTANCE_LAYERS behaves properly
+
+  [ Charles Giessen ]
+  * Add live_verification tests for runnign with real drivers
+
+  [ Mark Young ]
+  * Add a few device layer tests
+  * Add explicit layer invalid variant number test
+  * Switch ASSERT_EQ(false,true) for FAIL() in tests
+
+  [ Charles Giessen ]
+  * Guard building of live_verification tests
+  * Update build.md and README.md for the tests
+
+  [ Mark Young ]
+  * Add debug messages for unknown physical device extensions
+  * Loader single EnumPhysDev call through layers
+  * Code review comment fixes.
+  * Fix Windows build and add proper phys dev group sorting
+  * Clean up layer test
+  * Update Contributing.md file
+  * Enable testing of high-integrity in the loader
+  * Fix vk_icdGetPhysicalDeviceProcAddr docs
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.206
+
+  [ Charles Giessen ]
+  * Add consecutive create instance and device tests
+  * Fix compiler warnings in regression_tests
+
+  [ Matt Turner ]
+  * docs: Fix typo
+
+  [ Mark Young ]
+  * Resolve Angle failure because it breaks with is_high_integrity
+
+  [ sfricke-samsung ]
+  * loader: Fix wayland copy paste error
+
+  [ Mark Young ]
+  * Add "additive" environment variables
+  * Fix WIndows elevation
+  * Changes to additive env var based on code review
+
+  [ Charles Giessen ]
+  * Add live tests for OS dynamic loader behavior
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.207
+
+  [ Charles Giessen ]
+  * Remove RELEASE_BUILD cmake option
+  * Refactor CMake WSI platform defines
+  * Refactor CMake compiler options
+  * Move git info in CMake to loader_common_options
+  * Refactor loader specific CMake options
+  * Replace loader_cmake_config.h with definitions
+  * Use the CMake Threads package
+  * Refactor Windows specific loader CMake code
+  * Use GLOBs to get macOS vulkan framework headers
+  * Use CMake provided library names on macOS
+  * Remove BUILD_LOADER build option
+  * Format unix fallback paths in CMakeLists.txt
+  * Report secure_getenv missing when not using MSVC
+  * Fix compiler warnings in tests on MSVC
+  * Cleanup MSVC CMake code
+  * Use targets CMake logic instead of directories
+  * Specify wrap_objects.cpp in CMake code
+  * Make _GNU_SOURCE a common target property
+  * Set CMake C & C++ standard per target
+  * Fix macOS CMake errors
+  * Refactor CMake to user correct C/C++ Standard
+  * Use target_link_options if available in CMake
+  * Fix tests compiler warnings from bool conversions
+  * Set VK_NO_PROTOTYPES on test targets
+  * make secure_getenv discovery project wide
+  * Remove VK_NO_PROTOTYPES from test_util.h
+
+  [ Mark Young ]
+  * Modify loader VK_ADD_DRIVER_FILES behavior
+
+  [ Jamie Madill ]
+  * Use no-chromium-code in GN build.
+
+  [ Charles Giessen ]
+  * Revamp unknown function tests
+  * Move unknown function logic into dedicated file
+  * Remove hasing of unknown functions
+  * Test framework now shims registry functions
+  * Tests close layer handles when necessary
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.208
+
+  [ Mark Young ]
+  * Fix non-sorted surface indexing
+
+  [ Charles Giessen ]
+  * Remove LDP_DRIVER_6
+
+  [ Mark Young ]
+  * Fix #888 crash in Lutris with Linux sorting
+  * Apply code review comments from @charles-lunarg
+
+  [ John Zupin ]
+  * packaging: add VulkanRegistry_DIR to cmake
+
+ -- john <john@odin>  Tue, 29 Mar 2022 14:03:42 -0600
+
 vulkan-loader (1.3.204.1~rc1-1lunarg20.04-1) focal; urgency=medium
 
   [ Kevin McCullough ]
