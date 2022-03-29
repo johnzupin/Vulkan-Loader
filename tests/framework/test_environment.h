@@ -130,14 +130,18 @@ struct InstWrapper {
     InstWrapper& operator=(InstWrapper&&) noexcept;
 
     // Construct this VkInstance using googletest to assert if it succeeded
-    testing::AssertionResult CheckCreate(VkResult result_to_check = VK_SUCCESS);
+    void CheckCreate(VkResult result_to_check = VK_SUCCESS);
 
     // Convenience
     operator VkInstance() { return inst; }
     VulkanFunctions* operator->() { return functions; }
 
+    FromVoidStarFunc load(const char* func_name) { return FromVoidStarFunc(functions->vkGetInstanceProcAddr(inst, func_name)); }
+
     // Enumerate physical devices using googletest to assert if it succeeded
-    std::vector<VkPhysicalDevice> GetPhysDevs(uint32_t phys_dev_count, VkResult result_to_check = VK_SUCCESS);
+    std::vector<VkPhysicalDevice> GetPhysDevs(VkResult result_to_check = VK_SUCCESS);  // query all physical devices
+    std::vector<VkPhysicalDevice> GetPhysDevs(uint32_t phys_dev_count,
+                                              VkResult result_to_check = VK_SUCCESS);  // query only phys_dev_count devices
     // Enumerate a single physical device using googletest to assert if it succeeded
     VkPhysicalDevice GetPhysDev(VkResult result_to_check = VK_SUCCESS);
 
@@ -146,6 +150,8 @@ struct InstWrapper {
     VkAllocationCallbacks* callbacks = nullptr;
     InstanceCreateInfo create_info{};
 };
+
+std::vector<VkExtensionProperties> EnumerateDeviceExtensions(InstWrapper const& inst, VkPhysicalDevice physical_device);
 
 struct DeviceWrapper {
     DeviceWrapper(InstWrapper& inst_wrapper, VkAllocationCallbacks* callbacks = nullptr) noexcept;
@@ -164,6 +170,8 @@ struct DeviceWrapper {
     // Convenience
     operator VkDevice() { return dev; }
     VulkanFunctions* operator->() { return functions; }
+
+    FromVoidStarFunc load(const char* func_name) { return FromVoidStarFunc(functions->vkGetDeviceProcAddr(dev, func_name)); }
 
     VulkanFunctions* functions = nullptr;
     VkDevice dev = VK_NULL_HANDLE;
@@ -290,24 +298,45 @@ struct TestLayerHandle {
 };
 
 struct TestICDDetails {
-    TestICDDetails(const char* icd_path, uint32_t api_version = VK_MAKE_VERSION(1, 0, 0)) noexcept
+    TestICDDetails(fs::path icd_path, uint32_t api_version = VK_API_VERSION_1_0) noexcept
         : icd_path(icd_path), api_version(api_version) {}
-    const char* icd_path = nullptr;
-    uint32_t api_version = VK_MAKE_VERSION(1, 0, 0);
+    BUILDER_VALUE(TestICDDetails, fs::path, icd_path, {});
+    BUILDER_VALUE(TestICDDetails, uint32_t, api_version, VK_API_VERSION_1_0);
+    BUILDER_VALUE(TestICDDetails, std::string, json_name, "test_icd");
+    BUILDER_VALUE(TestICDDetails, bool, use_env_var_icd_filenames, false);
+    BUILDER_VALUE(TestICDDetails, bool, use_add_env_var_icd_filenames, false);
+    BUILDER_VALUE(TestICDDetails, bool, is_fake, false);
 };
+
 struct TestLayerDetails {
-    TestLayerDetails(const char* layer_path, uint32_t api_version = VK_MAKE_VERSION(1, 0, 0)) noexcept
-        : layer_path(layer_path), api_version(api_version) {}
-    const char* layer_path = nullptr;
-    uint32_t api_version = VK_MAKE_VERSION(1, 0, 0);
+    TestLayerDetails(ManifestLayer layer_manifest, const std::string& json_name) noexcept
+        : layer_manifest(layer_manifest), json_name(json_name) {}
+    BUILDER_VALUE(TestLayerDetails, ManifestLayer, layer_manifest, {});
+    BUILDER_VALUE(TestLayerDetails, std::string, json_name, "test_layer");
+    BUILDER_VALUE(TestLayerDetails, fs::FolderManager*, destination_folder, nullptr);
+    BUILDER_VALUE(TestLayerDetails, bool, add_to_regular_search_paths, true);
+    BUILDER_VALUE(TestLayerDetails, bool, is_fake, false);
 };
 
 struct FrameworkEnvironment {
-    FrameworkEnvironment(DebugMode debug_mode = DebugMode::none) noexcept;
+    FrameworkEnvironment(DebugMode debug_mode = DebugMode::none, bool override_icds = false,
+                         bool override_explicit_layers = false) noexcept;
 
-    void AddICD(TestICDDetails icd_details, const std::string& json_name) noexcept;
-    void AddImplicitLayer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;
-    void AddExplicitLayer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;
+    void add_icd(TestICDDetails icd_details) noexcept;
+    void add_implicit_layer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;
+    void add_implicit_layer(TestLayerDetails layer_details) noexcept;
+    void add_explicit_layer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;
+    void add_explicit_layer(TestLayerDetails layer_details) noexcept;
+    void add_fake_implicit_layer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;
+    void add_fake_explicit_layer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;
+
+    TestICD& get_test_icd(int index = 0) noexcept;
+    TestICD& reset_icd(int index = 0) noexcept;
+    fs::path get_test_icd_path(int index = 0) noexcept;
+
+    TestLayer& get_test_layer(int index = 0) noexcept;
+    TestLayer& reset_layer(int index = 0) noexcept;
+    fs::path get_test_layer_path(int index = 0) noexcept;
 
     PlatformShimWrapper platform_shim;
     fs::FolderManager null_folder;
@@ -316,45 +345,13 @@ struct FrameworkEnvironment {
     fs::FolderManager implicit_layer_folder;
     DebugUtilsLogger debug_log;
     VulkanFunctions vulkan_functions;
-};
-
-struct EnvVarICDOverrideShim : public FrameworkEnvironment {
-    EnvVarICDOverrideShim(DebugMode debug_mode = DebugMode::none) noexcept;
-
-    void SetEnvOverrideICD(const char* icd_path, const char* manifest_name) noexcept;
-
-    LibraryWrapper driver_wrapper;
-    GetNewTestICDFunc reset_icd;
-};
-
-struct SingleICDShim : public FrameworkEnvironment {
-    SingleICDShim(TestICDDetails icd_details, DebugMode debug_mode = DebugMode::none) noexcept;
-
-    TestICD& get_test_icd() noexcept;
-    TestICD& reset_icd() noexcept;
-
-    fs::path get_test_icd_path() noexcept;
-
-    TestICDHandle icd_handle;
-};
-
-struct MultipleICDShim : public FrameworkEnvironment {
-    MultipleICDShim(std::vector<TestICDDetails> icd_details_vector, DebugMode debug_mode = DebugMode::none) noexcept;
-
-    TestICD& get_test_icd(int index) noexcept;
-    TestICD& reset_icd(int index) noexcept;
-    fs::path get_test_icd_path(int index) noexcept;
 
     std::vector<TestICDHandle> icds;
-};
+    std::vector<TestLayerHandle> layers;
 
-struct FakeBinaryICDShim : public FrameworkEnvironment {
-    FakeBinaryICDShim(TestICDDetails read_icd_details, TestICDDetails fake_icd_details,
-                      DebugMode debug_mode = DebugMode::none) noexcept;
+    std::string env_var_vk_icd_filenames;
+    std::string add_env_var_vk_icd_filenames;
 
-    TestICD& get_test_icd() noexcept;
-    TestICD& reset_icd() noexcept;
-    fs::path get_test_icd_path() noexcept;
-
-    TestICDHandle real_icd;
+   private:
+    void add_layer_impl(TestLayerDetails layer_details, fs::FolderManager& folder_manager, ManifestCategory category);
 };

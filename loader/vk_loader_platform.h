@@ -1,8 +1,8 @@
 /*
  *
- * Copyright (c) 2015-2021 The Khronos Group Inc.
- * Copyright (c) 2015-2021 Valve Corporation
- * Copyright (c) 2015-2021 LunarG, Inc.
+ * Copyright (c) 2015-2022 The Khronos Group Inc.
+ * Copyright (c) 2015-2022 Valve Corporation
+ * Copyright (c) 2015-2022 LunarG, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,8 +96,11 @@
 #endif
 
 // Environment Variable information
-#define VK_ICD_FILENAMES_ENV_VAR "VK_ICD_FILENAMES"
+#define VK_ICD_FILENAMES_ENV_VAR "VK_ICD_FILENAMES" // Deprecated
+#define VK_DRIVER_FILES_ENV_VAR "VK_DRIVER_FILES"
+#define VK_ADDITIONAL_DRIVER_FILES_ENV_VAR "VK_ADD_DRIVER_FILES"
 #define VK_LAYER_PATH_ENV_VAR "VK_LAYER_PATH"
+#define VK_ADDITIONAL_LAYER_PATH_ENV_VAR "VK_ADD_LAYER_PATH"
 
 // Override layer information
 #define VK_OVERRIDE_LAYER_NAME "VK_LAYER_LUNARG_override"
@@ -427,8 +430,8 @@ static loader_platform_dl_handle loader_platform_open_library(const char *lib_pa
     return lib_handle;
 }
 static char *loader_platform_open_library_error(const char *libPath) {
-    static char errorMsg[164];
-    (void)snprintf(errorMsg, 163, "Failed to open dynamic library \"%s\" with error %lu", libPath, GetLastError());
+    static char errorMsg[512];
+    (void)snprintf(errorMsg, 511, "Failed to open dynamic library \"%s\" with error %lu", libPath, GetLastError());
     return errorMsg;
 }
 static void loader_platform_close_library(loader_platform_dl_handle library) { FreeLibrary(library); }
