@@ -1,3 +1,33 @@
+vulkan-loader (1.3.211.0~rc1-1lunarg18.04-1) bionic; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.209
+
+  [ unknown ]
+  * Fixup several small issues found by Visual Studio
+
+  [ Charles Giessen ]
+  * Dont emit warnings on unknown manifest file versions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.210
+
+  [ Charles Giessen ]
+  * Fix missed Physical Devices in Windows
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.211
+
+  [ Charles Giessen ]
+  * Warn if portability_enumeration extension should be enabled
+  * Document VK_KHR_portability_enumeration support
+  * Fixup loader after cherry-picks
+
+  [ John Zupin ]
+  * packaging: update vulkan-headers dep version
+
+ -- john <john@odin>  Mon, 11 Apr 2022 13:14:27 -0600
+
 vulkan-loader (1.3.209.0~rc1-1lunarg18.04-1) bionic; urgency=medium
 
   [ Mark Young ]
