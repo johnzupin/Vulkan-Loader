@@ -244,7 +244,7 @@ struct DebugUtilsWrapper {
     VkDebugUtilsMessengerCreateInfoEXT* get() noexcept { return logger.get(); }
 
     DebugUtilsLogger logger;
-    VkInstance inst;
+    VkInstance inst = VK_NULL_HANDLE;
     VkAllocationCallbacks* callbacks = nullptr;
     PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = nullptr;
     PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = nullptr;
@@ -281,8 +281,9 @@ struct TestICDHandle {
 
     // Must use statically
     LibraryWrapper icd_library;
-    GetTestICDFunc proc_addr_get_test_icd;
-    GetNewTestICDFunc proc_addr_reset_icd;
+    GetTestICDFunc proc_addr_get_test_icd = nullptr;
+    GetNewTestICDFunc proc_addr_reset_icd = nullptr;
+    fs::path manifest_path;
 };
 struct TestLayerHandle {
     TestLayerHandle() noexcept;
@@ -293,15 +294,17 @@ struct TestLayerHandle {
 
     // Must use statically
     LibraryWrapper layer_library;
-    GetTestLayerFunc proc_addr_get_test_layer;
-    GetNewTestLayerFunc proc_addr_reset_layer;
+    GetTestLayerFunc proc_addr_get_test_layer = nullptr;
+    GetNewTestLayerFunc proc_addr_reset_layer = nullptr;
+    fs::path manifest_path;
 };
 
 struct TestICDDetails {
-    TestICDDetails(fs::path icd_path, uint32_t api_version = VK_API_VERSION_1_0) noexcept
-        : icd_path(icd_path), api_version(api_version) {}
-    BUILDER_VALUE(TestICDDetails, fs::path, icd_path, {});
-    BUILDER_VALUE(TestICDDetails, uint32_t, api_version, VK_API_VERSION_1_0);
+    TestICDDetails(ManifestICD icd_manifest) noexcept : icd_manifest(icd_manifest) {}
+    TestICDDetails(fs::path icd_path, uint32_t api_version = VK_API_VERSION_1_0) noexcept {
+        icd_manifest.set_lib_path(icd_path.str()).set_api_version(api_version);
+    }
+    BUILDER_VALUE(TestICDDetails, ManifestICD, icd_manifest, {});
     BUILDER_VALUE(TestICDDetails, std::string, json_name, "test_icd");
     BUILDER_VALUE(TestICDDetails, bool, use_env_var_icd_filenames, false);
     BUILDER_VALUE(TestICDDetails, bool, use_add_env_var_icd_filenames, false);

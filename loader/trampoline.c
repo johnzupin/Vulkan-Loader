@@ -167,6 +167,7 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceExtensionPropert
     if (libs == NULL && layers.count > 0) {
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
+    memset(libs, 0, sizeof(loader_platform_dl_handle) * layers.count);
     size_t lib_count = 0;
 
     // Prepend layers onto the chain if they implement this entry point
@@ -198,7 +199,7 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceExtensionPropert
             res = VK_ERROR_OUT_OF_HOST_MEMORY;
             break;
         }
-
+        memset(chain_link, 0, sizeof(VkEnumerateInstanceLayerPropertiesChain));
         chain_link->header.type = VK_CHAIN_TYPE_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES;
         chain_link->header.version = VK_CURRENT_CHAIN_VERSION;
         chain_link->header.size = sizeof(*chain_link);
@@ -257,6 +258,7 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceLayerProperties(
 
     // We'll need to save the dl handles so we can close them later
     loader_platform_dl_handle *libs = malloc(sizeof(loader_platform_dl_handle) * layers.count);
+    memset(libs, 0, sizeof(loader_platform_dl_handle) * layers.count);
     if (libs == NULL && layers.count > 0) {
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
@@ -291,7 +293,7 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceLayerProperties(
             res = VK_ERROR_OUT_OF_HOST_MEMORY;
             break;
         }
-
+        memset(chain_link, 0, sizeof(VkEnumerateInstanceLayerPropertiesChain));
         chain_link->header.type = VK_CHAIN_TYPE_ENUMERATE_INSTANCE_LAYER_PROPERTIES;
         chain_link->header.version = VK_CURRENT_CHAIN_VERSION;
         chain_link->header.size = sizeof(*chain_link);
@@ -360,6 +362,7 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceVersion(uint32_t
     if (libs == NULL && layers.count > 0) {
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
+    memset(libs, 0, sizeof(loader_platform_dl_handle) * layers.count);
     size_t lib_count = 0;
 
     // Prepend layers onto the chain if they implement this entry point
@@ -389,7 +392,7 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceVersion(uint32_t
             res = VK_ERROR_OUT_OF_HOST_MEMORY;
             break;
         }
-
+        memset(chain_link, 0, sizeof(VkEnumerateInstanceLayerPropertiesChain));
         chain_link->header.type = VK_CHAIN_TYPE_ENUMERATE_INSTANCE_VERSION;
         chain_link->header.version = VK_CURRENT_CHAIN_VERSION;
         chain_link->header.size = sizeof(*chain_link);
@@ -476,6 +479,18 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
     } else {
         ptr_instance->app_api_major_version = VK_API_VERSION_MAJOR(pCreateInfo->pApplicationInfo->apiVersion);
         ptr_instance->app_api_minor_version = VK_API_VERSION_MINOR(pCreateInfo->pApplicationInfo->apiVersion);
+    }
+
+    // Check the VkInstanceCreateInfoFlags wether to allow the portability enumeration flag
+    if ((pCreateInfo->flags & VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR) == 1) {
+        // Make sure the extension has been enabled
+        for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+            if (strcmp(pCreateInfo->ppEnabledExtensionNames[i], VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) {
+                ptr_instance->portability_enumeration_enabled = true;
+                loader_log(ptr_instance, VULKAN_LOADER_INFO_BIT, 0,
+                           "Portability enumeration bit was set, enumerating portability drivers.");
+            }
+        }
     }
 
     // Look for one or more VK_EXT_debug_report or VK_EXT_debug_utils create info structures
