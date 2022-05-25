@@ -43,10 +43,6 @@
  */
 #pragma once
 
-// Following items are needed for C++ to work with PRIxLEAST64
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
-
 #include <algorithm>
 #include <array>
 #include <iostream>
@@ -62,6 +58,7 @@
 #include <cassert>
 #include <cstring>
 #include <ctime>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 
@@ -127,13 +124,6 @@ const char* win_api_error_str(LSTATUS status);
 void print_error_message(LSTATUS status, const char* function_name, std::string optional_message = "");
 #endif
 
-enum class DebugMode {
-    none,
-    log,       // log all folder and file creation & deletion
-    no_delete  // Will not delete create folders & files, but will report 'deleting them' to show when something *should* of been
-               // deleted
-};
-
 struct ManifestICD;    // forward declaration for FolderManager::write
 struct ManifestLayer;  // forward declaration for FolderManager::write
 
@@ -196,7 +186,7 @@ struct path {
     // get C++ style string
     std::string const& str() const { return contents; }
     std::string& str() { return contents; }
-    size_t size() const { return contents.size(); };
+    size_t size() const { return contents.size(); }
 
     // equality
     bool operator==(path const& other) const noexcept { return contents == other.contents; }
@@ -214,7 +204,7 @@ int delete_folder(path const& folder);
 
 class FolderManager {
    public:
-    explicit FolderManager(path root_path, std::string name, DebugMode debug = DebugMode::none);
+    explicit FolderManager(path root_path, std::string name);
     ~FolderManager();
     FolderManager(FolderManager const&) = delete;
     FolderManager& operator=(FolderManager const&) = delete;
@@ -231,7 +221,6 @@ class FolderManager {
     path location() const { return folder; }
 
    private:
-    DebugMode debug;
     path folder;
     std::vector<std::string> files;
 };
@@ -258,9 +247,9 @@ typedef HMODULE loader_platform_dl_handle;
 static loader_platform_dl_handle loader_platform_open_library(const char* lib_path) {
     // Try loading the library the original way first.
     loader_platform_dl_handle lib_handle = LoadLibrary(lib_path);
-    if (lib_handle == NULL && GetLastError() == ERROR_MOD_NOT_FOUND) {
+    if (lib_handle == nullptr && GetLastError() == ERROR_MOD_NOT_FOUND) {
         // If that failed, then try loading it with broader search folders.
-        lib_handle = LoadLibraryEx(lib_path, NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
+        lib_handle = LoadLibraryEx(lib_path, nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
     }
     return lib_handle;
 }
@@ -273,7 +262,7 @@ inline void loader_platform_close_library(loader_platform_dl_handle library) { F
 inline void* loader_platform_get_proc_address(loader_platform_dl_handle library, const char* name) {
     assert(library);
     assert(name);
-    return (void*)GetProcAddress(library, name);
+    return reinterpret_cast<void*>(GetProcAddress(library, name));
 }
 inline char* loader_platform_get_proc_address_error(const char* name) {
     static char errorMsg[120];
@@ -315,14 +304,14 @@ struct LibraryWrapper {
     explicit LibraryWrapper() noexcept {}
     explicit LibraryWrapper(fs::path const& lib_path) noexcept : lib_path(lib_path) {
         lib_handle = loader_platform_open_library(lib_path.c_str());
-        if (lib_handle == NULL) {
+        if (lib_handle == nullptr) {
             fprintf(stderr, "Unable to open library %s: %s\n", lib_path.c_str(),
                     loader_platform_open_library_error(lib_path.c_str()));
-            assert(lib_handle != NULL && "Must be able to open library");
+            assert(lib_handle != nullptr && "Must be able to open library");
         }
     }
     ~LibraryWrapper() noexcept {
-        if (lib_handle != NULL) {
+        if (lib_handle != nullptr) {
             loader_platform_close_library(lib_handle);
             lib_handle = nullptr;
         }
@@ -472,6 +461,8 @@ inline std::ostream& operator<<(std::ostream& os, const VkResult& result) {
             return os << "VK_PIPELINE_COMPILE_REQUIRED_EXT";
         case (VK_RESULT_MAX_ENUM):
             return os << "VK_RESULT_MAX_ENUM";
+        case (VK_ERROR_COMPRESSION_EXHAUSTED_EXT):
+            return os << "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
     }
     return os << static_cast<int32_t>(result);
 }
@@ -502,7 +493,7 @@ inline std::string version_to_string(uint32_t version) {
 // class_name = class the member variable is apart of
 // type = type of the variable
 // name = name of the variable
-// singular_name = used for the `add_singluar_name` member function
+// singular_name = used for the `add_singular_name` member function
 #define BUILDER_VECTOR(class_name, type, name, singular_name)                    \
     std::vector<type> name;                                                      \
     class_name& add_##singular_name(type const& singular_name) {                 \
@@ -585,6 +576,7 @@ struct ManifestLayer {
         BUILDER_VECTOR(LayerDescription, std::string, blacklisted_layers, blacklisted_layer)
         BUILDER_VECTOR(LayerDescription, std::string, override_paths, override_path)
         BUILDER_VECTOR(LayerDescription, FunctionOverride, pre_instance_functions, pre_instance_function)
+        BUILDER_VECTOR(LayerDescription, std::string, app_keys, app_key)
 
         std::string get_manifest_str() const;
         VkLayerProperties get_layer_properties() const;
@@ -599,7 +591,9 @@ struct Extension {
     BUILDER_VALUE(Extension, std::string, extensionName, {})
     BUILDER_VALUE(Extension, uint32_t, specVersion, VK_API_VERSION_1_0)
 
-    Extension(std::string extensionName, uint32_t specVersion = VK_API_VERSION_1_0)
+    Extension(const char* name, uint32_t specVersion = VK_API_VERSION_1_0) noexcept
+        : extensionName(name), specVersion(specVersion) {}
+    Extension(std::string extensionName, uint32_t specVersion = VK_API_VERSION_1_0) noexcept
         : extensionName(extensionName), specVersion(specVersion) {}
 
     VkExtensionProperties get() const noexcept {
@@ -865,3 +859,96 @@ inline bool contains(std::vector<VkLayerProperties> const& vec, const char* name
     return std::any_of(std::begin(vec), std::end(vec),
                        [name](VkLayerProperties const& elem) { return string_eq(name, elem.layerName); });
 }
+
+#if defined(__linux__)
+
+// find application path + name. Path cannot be longer than 1024, returns NULL if it is greater than that.
+static inline std::string test_platform_executable_path() {
+    std::string buffer;
+    buffer.resize(1024);
+    ssize_t count = readlink("/proc/self/exe", &buffer[0], buffer.size());
+    if (count == -1) return NULL;
+    if (count == 0) return NULL;
+    buffer[count] = '\0';
+    buffer.resize(count);
+    return buffer;
+}
+#elif defined(__APPLE__)  // defined(__linux__)
+#include <libproc.h>
+static inline std::string test_platform_executable_path() {
+    std::string buffer;
+    buffer.resize(1024);
+    pid_t pid = getpid();
+    int ret = proc_pidpath(pid, &buffer[0], buffer.size());
+    if (ret <= 0) return NULL;
+    buffer[ret] = '\0';
+    buffer.resize(ret);
+    return buffer;
+}
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
+#include <sys/sysctl.h>
+static inline std::string test_platform_executable_path() {
+    int mib[] = {
+        CTL_KERN,
+#if defined(__NetBSD__)
+        KERN_PROC_ARGS,
+        -1,
+        KERN_PROC_PATHNAME,
+#else
+        KERN_PROC,
+        KERN_PROC_PATHNAME,
+        -1,
+#endif
+    };
+    std::string buffer;
+    buffer.resize(1024);
+    size_t size = buffer.size();
+    if (sysctl(mib, sizeof(mib) / sizeof(mib[0]), &buffer[0], &size, NULL, 0) < 0) {
+        return NULL;
+    }
+    buffer.resize(size);
+
+    return buffer;
+}
+#elif defined(__Fuchsia__)
+static inline std::string test_platform_executable_path() { return {}; }
+#elif defined(__QNXNTO__)
+
+#define SYSCONFDIR "/etc"
+
+#include <fcntl.h>
+#include <sys/stat.h>
+
+static inline std::string test_platform_executable_path() {
+    std::string buffer;
+    buffer.resize(1024);
+    int fd = open("/proc/self/exefile", O_RDONLY);
+    size_t rdsize;
+
+    if (fd == -1) {
+        return NULL;
+    }
+
+    rdsize = read(fd, &buffer[0], buffer.size());
+    if (rdsize == size) {
+        return NULL;
+    }
+    buffer[rdsize] = 0x00;
+    close(fd);
+    buffer.resize(rdsize);
+
+    return buffer;
+}
+#endif  // defined (__QNXNTO__)
+#if defined(WIN32)
+static inline std::string test_platform_executable_path() {
+    std::string buffer;
+    buffer.resize(1024);
+    DWORD ret = GetModuleFileName(NULL, static_cast<LPSTR>(&buffer[0]), (DWORD)buffer.size());
+    if (ret == 0) return NULL;
+    if (ret > buffer.size()) return NULL;
+    buffer.resize(ret);
+    buffer[ret] = '\0';
+    return buffer;
+}
+#endif
