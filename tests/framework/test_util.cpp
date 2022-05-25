@@ -45,11 +45,11 @@ void print_error_message(LSTATUS status, const char* function_name, std::string 
     LPVOID lpMsgBuf;
     DWORD dw = GetLastError();
 
-    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dw,
-                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
+    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, dw,
+                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPTSTR>(&lpMsgBuf), 0, nullptr);
 
     std::cerr << function_name << " failed with " << win_api_error_str(status) << ": "
-              << std::string(static_cast<LPTSTR>(lpMsgBuf));
+              << std::string(reinterpret_cast<LPTSTR>(lpMsgBuf));
     if (optional_message != "") {
         std::cerr << " | " << optional_message;
     }
@@ -68,7 +68,7 @@ void remove_env_var(std::string const& name) { SetEnvironmentVariableA(name.c_st
 std::string get_env_var(std::string const& name, bool report_failure) {
     std::string value;
     value.resize(ENV_VAR_BUFFER_SIZE);
-    DWORD ret = GetEnvironmentVariable(name.c_str(), (LPSTR)value.c_str(), ENV_VAR_BUFFER_SIZE);
+    DWORD ret = GetEnvironmentVariable(name.c_str(), &value[0], ENV_VAR_BUFFER_SIZE);
     if (0 == ret) {
         if (report_failure) print_error_message(ERROR_ENVVAR_NOT_FOUND, "GetEnvironmentVariable");
         return std::string();
@@ -174,6 +174,7 @@ std::string ManifestLayer::LayerDescription::get_manifest_str() const {
     print_vector_of_strings(out, "component_layers", component_layers);
     print_vector_of_strings(out, "blacklisted_layers", blacklisted_layers);
     print_vector_of_strings(out, "override_paths", override_paths);
+    print_vector_of_strings(out, "app_keys", app_keys);
     print_list_of_t(out, "pre_instance_functions", pre_instance_functions);
 
     out += "\n\t}";
@@ -416,7 +417,7 @@ int delete_folder(path const& folder) {
 #endif
 }
 
-FolderManager::FolderManager(path root_path, std::string name, DebugMode debug) : debug(debug), folder(root_path / name) {
+FolderManager::FolderManager(path root_path, std::string name) : folder(root_path / name) {
     delete_folder_contents(folder);
     create_folder(folder);
 }
@@ -427,17 +428,9 @@ FolderManager::~FolderManager() {
     // removing those. Since this is in an OOM situation, it is a low priority to fix. It does have the effect that Windows will
     // be unable to delete the binaries that were leaked.
     for (auto& file : list_of_files_to_delete) {
-        if (debug >= DebugMode::log) std::cout << "Removing manifest " << file << " at " << (folder / file).str() << "\n";
-        if (debug != DebugMode::no_delete) {
-            remove(file);
-        }
+        remove(file);
     }
-    if (debug != DebugMode::no_delete) {
-        delete_folder(folder);
-    }
-    if (debug >= DebugMode::log) {
-        std::cout << "Deleting folder " << folder.str() << "\n";
-    }
+    delete_folder(folder);
 }
 path FolderManager::write_manifest(std::string const& name, std::string const& contents) {
     path out_path = folder / name;
@@ -445,7 +438,6 @@ path FolderManager::write_manifest(std::string const& name, std::string const& c
     if (found != files.end()) {
         std::cout << "Overwriting manifest " << name << ". Was this intended?\n";
     } else {
-        if (debug >= DebugMode::log) std::cout << "Creating manifest " << name << " at " << out_path.str() << "\n";
         files.emplace_back(name);
     }
     auto file = std::ofstream(out_path.str(), std::ios_base::trunc | std::ios_base::out);
@@ -461,17 +453,15 @@ void FolderManager::remove(std::string const& name) {
     path out_path = folder / name;
     auto found = std::find(files.begin(), files.end(), name);
     if (found != files.end()) {
-        if (debug >= DebugMode::log) std::cout << "Removing file " << name << " at " << out_path.str() << "\n";
-        if (debug != DebugMode::no_delete) {
-            int rc = std::remove(out_path.c_str());
-            if (rc != 0 && debug >= DebugMode::log) {
-                std::cerr << "Failed to remove file " << name << " at " << out_path.str() << "\n";
-            }
-
-            files.erase(found);
+        int rc = std::remove(out_path.c_str());
+        if (rc != 0) {
+            std::cerr << "Failed to remove file " << name << " at " << out_path.str() << "\n";
         }
+
+        files.erase(found);
+
     } else {
-        if (debug >= DebugMode::log) std::cout << "Couldn't remove file " << name << " at " << out_path.str() << ".\n";
+        std::cout << "Couldn't remove file " << name << " at " << out_path.str() << ".\n";
     }
 }
 
@@ -480,11 +470,10 @@ path FolderManager::copy_file(path const& file, std::string const& new_name) {
     auto new_filepath = folder / new_name;
     auto found = std::find(files.begin(), files.end(), new_name);
     if (found != files.end()) {
-        if (debug >= DebugMode::log) std::cout << "File location already contains" << new_name << ". Is this a bug?\n";
+        std::cout << "File location already contains" << new_name << ". Is this a bug?\n";
     } else if (file.str() == new_filepath.str()) {
-        if (debug >= DebugMode::log) std::cout << "Trying to copy " << new_name << " into itself. Is this a bug?\n";
+        std::cout << "Trying to copy " << new_name << " into itself. Is this a bug?\n";
     } else {
-        if (debug >= DebugMode::log) std::cout << "Copying file" << file.str() << " to " << new_filepath.str() << "\n";
         files.emplace_back(new_name);
     }
     std::ifstream src(file.str(), std::ios::binary);

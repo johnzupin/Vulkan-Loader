@@ -78,7 +78,8 @@ LOADER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkI
 
             // First check if instance is valid - loader_get_instance() returns NULL if it isn't.
             struct loader_instance *ptr_instance = loader_get_instance(instance);
-            if (ptr_instance != NULL && (ptr_instance->app_api_minor_version > 2)) {
+            if (ptr_instance != NULL &&
+                loader_check_version_meets_required(loader_combine_version(1, 3, 0), ptr_instance->app_api_version)) {
                 // New behavior
                 return NULL;
             } else {
@@ -474,11 +475,23 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
 
     // Save the application version
     if (NULL == pCreateInfo->pApplicationInfo || 0 == pCreateInfo->pApplicationInfo->apiVersion) {
-        ptr_instance->app_api_major_version = 1;
-        ptr_instance->app_api_minor_version = 0;
+        ptr_instance->app_api_version = LOADER_VERSION_1_0_0;
     } else {
-        ptr_instance->app_api_major_version = VK_API_VERSION_MAJOR(pCreateInfo->pApplicationInfo->apiVersion);
-        ptr_instance->app_api_minor_version = VK_API_VERSION_MINOR(pCreateInfo->pApplicationInfo->apiVersion);
+        ptr_instance->app_api_version = loader_make_version(pCreateInfo->pApplicationInfo->apiVersion);
+        // zero out the patch version since we don't actually want to compare with it
+        ptr_instance->app_api_version.patch = 0;
+    }
+
+    // Check the VkInstanceCreateInfoFlags wether to allow the portability enumeration flag
+    if ((pCreateInfo->flags & VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR) == 1) {
+        // Make sure the extension has been enabled
+        for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+            if (strcmp(pCreateInfo->ppEnabledExtensionNames[i], VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) {
+                ptr_instance->portability_enumeration_enabled = true;
+                loader_log(ptr_instance, VULKAN_LOADER_INFO_BIT, 0,
+                           "Portability enumeration bit was set, enumerating portability drivers.");
+            }
+        }
     }
 
     // Check the VkInstanceCreateInfoFlags wether to allow the portability enumeration flag
@@ -562,18 +575,22 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
 
     // Scan/discover all ICD libraries
     memset(&ptr_instance->icd_tramp_list, 0, sizeof(ptr_instance->icd_tramp_list));
-    res = loader_icd_scan(ptr_instance, &ptr_instance->icd_tramp_list);
-    if (res == VK_SUCCESS && ptr_instance->icd_tramp_list.count == 0) {
+    bool skipped_portability_drivers = false;
+    res = loader_icd_scan(ptr_instance, &ptr_instance->icd_tramp_list, &skipped_portability_drivers);
+    if (res == VK_ERROR_OUT_OF_HOST_MEMORY) {
+        goto out;
+    } else if (ptr_instance->icd_tramp_list.count == 0) {
         // No drivers found
+        if (skipped_portability_drivers) {
+            loader_log(
+                ptr_instance, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                "vkCreateInstance: Found drivers that contain devices which support the portability subset, but the "
+                "portability enumeration bit was not set!. Applications that wish to enumerate portability drivers must set the "
+                "VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR bit in the VkInstanceCreateInfo flags and"
+                "enable the VK_KHR_portability_enumeration instance extension.");
+        }
         loader_log(ptr_instance, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0, "vkCreateInstance: Found no drivers!");
         res = VK_ERROR_INCOMPATIBLE_DRIVER;
-        goto out;
-    }
-    if (res != VK_SUCCESS) {
-        if (res != VK_ERROR_OUT_OF_HOST_MEMORY && ptr_instance->icd_tramp_list.count == 0) {
-            loader_log(ptr_instance, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0, "vkCreateInstance: Found no drivers!");
-            res = VK_ERROR_INCOMPATIBLE_DRIVER;
-        }
         goto out;
     }
 

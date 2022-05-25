@@ -62,6 +62,22 @@ std::vector<std::string> parse_env_var_list(std::string const& var) {
 
 #if defined(WIN32)
 
+D3DKMT_Adapter& D3DKMT_Adapter::add_driver_manifest_path(fs::path const& src) { return add_path(src, driver_paths); }
+D3DKMT_Adapter& D3DKMT_Adapter::add_implicit_layer_manifest_path(fs::path const& src) {
+    return add_path(src, implicit_layer_paths);
+}
+D3DKMT_Adapter& D3DKMT_Adapter::add_explicit_layer_manifest_path(fs::path const& src) {
+    return add_path(src, explicit_layer_paths);
+}
+
+D3DKMT_Adapter& D3DKMT_Adapter::add_path(fs::path src, std::vector<std::wstring>& dest) {
+    std::wstring dest_path;
+    dest_path.resize(src.size());
+    MultiByteToWideChar(CP_UTF8, 0, src.c_str(), static_cast<int>(src.size()), &dest_path[0], static_cast<int>(dest_path.size()));
+    dest.push_back(dest_path);
+    return *this;
+}
+
 std::string category_path_name(ManifestCategory category) {
     if (category == ManifestCategory::implicit_layer) return "ImplicitLayers";
     if (category == ManifestCategory::explicit_layer)
@@ -70,7 +86,7 @@ std::string category_path_name(ManifestCategory category) {
         return "Drivers";
 }
 
-void PlatformShim::reset(DebugMode debug_mode) {
+void PlatformShim::reset() {
     hkey_current_user_explicit_layers.clear();
     hkey_current_user_implicit_layers.clear();
     hkey_local_machine_explicit_layers.clear();
@@ -87,14 +103,11 @@ void PlatformShim::add_manifest(ManifestCategory category, fs::path const& path)
     else
         hkey_local_machine_drivers.emplace_back(path.str());
 }
-void PlatformShim::add_dxgi_adapter(fs::path const& manifest_path, GpuType gpu_preference, uint32_t known_driver_index,
-                                    DXGI_ADAPTER_DESC1 desc1) {
-    dxgi_adapters.push_back(DXGIAdapter(manifest_path, gpu_preference, known_driver_index, desc1, next_adapter_handle++));
+void PlatformShim::add_dxgi_adapter(GpuType gpu_preference, DXGI_ADAPTER_DESC1 desc1) {
+    dxgi_adapters.push_back(DXGIAdapter(gpu_preference, desc1, next_adapter_handle++));
 }
 
-void PlatformShim::add_d3dkmt_adapter(SHIM_D3DKMT_ADAPTERINFO adapter, fs::path const& path) {
-    d3dkmt_adapters.push_back({adapter, path});
-}
+void PlatformShim::add_d3dkmt_adapter(D3DKMT_Adapter const& adapter) { d3dkmt_adapters.push_back(adapter); }
 
 // TODO:
 void PlatformShim::add_CM_Device_ID(std::wstring const& id, fs::path const& icd_path, fs::path const& layer_path) {
@@ -131,7 +144,7 @@ std::string category_path_name(ManifestCategory category) {
         return "icd.d";
 }
 
-void PlatformShim::reset(DebugMode debug_mode) { redirection_map.clear(); }
+void PlatformShim::reset() { redirection_map.clear(); }
 
 void PlatformShim::redirect_path(fs::path const& path, fs::path const& new_path) { redirection_map[path.str()] = new_path; }
 void PlatformShim::remove_redirect(fs::path const& path) { redirection_map.erase(path.str()); }
