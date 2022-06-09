@@ -1,3 +1,17 @@
+vulkan-loader (1.3.216.0~rc1-1lunarg18.04-1) bionic; urgency=medium
+
+  [ Charles Giessen ]
+  * Fix a NULL inst crashing during loader_icd_scan
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.215
+  * build: Update to header 1.3.216
+
+  [ Charles Giessen ]
+  * Only check first GPDPA in the layer chain.
+
+ -- john <john@odin>  Thu, 09 Jun 2022 10:07:36 -0600
+
 vulkan-loader (1.3.214.0~rc1-1lunarg18.04-1) bionic; urgency=medium
 
   [ Mark Young ]
