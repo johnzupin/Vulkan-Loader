@@ -1,3 +1,118 @@
+vulkan-loader (1.3.224.0~rc1-1lunarg20.04-1) focal; urgency=medium
+
+  [ Ludovico de Nittis ]
+  * Update supported versions in the docs
+
+  [ Rutwik Choughule ]
+  * docs: Fix typo in MoltenVK url
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.215
+
+  [ Charles Giessen ]
+  * Refactor loader allocation functionality
+  * Use VkAllocationCallbacks in windows dirent
+  * Use VkAllocationCallback in cJSON
+  * Use calloc instead of alloc+memset
+  * Fix a NULL inst crashing during loader_icd_scan
+
+  [ Mark Young ]
+  * Clarify JSON Manifest "api_version"
+  * Clean up environment var docs
+  * Fix typo in env var table
+
+  [ Charles Giessen ]
+  * Use calloc to allocate memory for the search path
+  * Keep allocated debug callbacks until destroy instance
+  * Fix crashes from OOM in vkDestroyInstance
+
+  [ Tim Gfrerer ]
+  * fix typo
+
+  [ Charles Giessen ]
+  * Update layer and driver vkGetPhysDevProcAddr docs
+
+  [ Andrew Cox ]
+  * fix #948 Only calls the first GPDPA in layer chain
+  * Comment tweak to reflect new behaviour.
+
+  [ Charles Giessen ]
+  * Revert "Comment tweak to reflect new behaviour."
+  * Revert "fix #948 Only calls the first GPDPA in layer chain"
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.216
+
+  [ Charles Giessen ]
+  * Only check first GPDPA in the layer chain.
+  * Only check first GPDPA in the layer chain.
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.217
+  * tests: Shuffle devices for sort test
+  * build: Update to header 1.3.218
+
+  [ Graeme Leese ]
+  * Prevent loader config from overriding project config
+
+  [ Brad Grantham ]
+  * only descend into layer GPDPA from trampoline
+
+  [ Charles Giessen ]
+  * Fix use-after-free in loader_add_layer_properties
+  * Add 32 & 64 bit field to json manifests
+
+  [ Andrew Naumov ]
+  * loader: Add unicode support
+
+  [ Marcin Kańtoch ]
+  * loader: device array dealloc fix
+
+  [ Yuly Novikov ]
+  * Fix BUILD.gn
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.219
+
+  [ Charles Giessen ]
+  * Make tests get files in a consistent order
+
+  [ Jesse Natalie ]
+  * Enable the Vulkan loader to load VulkanOn12/Dozen out of the D3DMappingLayers app package
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.220
+
+  [ Charles Giessen ]
+  * Refactor vk_loader_platform.h
+  * Initialize properly when statically linked
+  * Fix corrupted pNext chain in vkCreateDevice
+  * Disable VulkanOn12/Dozen in Windows 7
+
+  [ Mike Schuchardt ]
+  * loader: Dynamically load Win8+ functions
+  * build: Update to header 1.3.221
+
+  [ Pan ]
+  * Fix typo in setting linux environment variables
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.222
+  * build: Update to header 1.3.223
+
+  [ Charles Giessen ]
+  * Use memmove for copying pApplicationInfo
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.224
+
+  [ Charles Giessen ]
+  * Separate Major.minor version checks from Full version checks
+  * Rename GIPA, GPDPA, & GDPA terminators
+  * Enable layer interception of unknown functions
+
+ -- john <john@odin>  Tue, 16 Aug 2022 09:14:42 -0600
+
 vulkan-loader (1.3.216.0~rc1-1lunarg20.04-1) focal; urgency=medium
 
   [ Charles Giessen ]
