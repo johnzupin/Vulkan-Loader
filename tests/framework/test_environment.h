@@ -258,8 +258,10 @@ VkResult CreateDebugUtilsMessenger(DebugUtilsWrapper& debug_utils);
 void FillDebugUtilsCreateDetails(InstanceCreateInfo& create_info, DebugUtilsLogger& logger);
 void FillDebugUtilsCreateDetails(InstanceCreateInfo& create_info, DebugUtilsWrapper& wrapper);
 
+struct FrameworkEnvironment;  // forward declaration
+
 struct PlatformShimWrapper {
-    PlatformShimWrapper() noexcept;
+    PlatformShimWrapper(std::vector<fs::FolderManager>* folders) noexcept;
     ~PlatformShimWrapper() noexcept;
     PlatformShimWrapper(PlatformShimWrapper const&) = delete;
     PlatformShimWrapper& operator=(PlatformShimWrapper const&) = delete;
@@ -301,11 +303,12 @@ struct TestLayerHandle {
 };
 
 enum class ManifestDiscoveryType {
-    generic,          // put the manifest in the regular locations
-    none,             // don't add to regular locations - eg D3DKMT
-    env_var,          // use the corresponding env-var for it
-    add_env_var,      // use the corresponding add-env-var for it
-    override_folder,  // add to a special folder for the override layer to use
+    generic,             // put the manifest in the regular locations
+    none,                // don't add to regular locations - eg D3DKMT
+    env_var,             // use the corresponding env-var for it
+    add_env_var,         // use the corresponding add-env-var for it
+    override_folder,     // add to a special folder for the override layer to use
+    windows_app_package, // let the app package search find it
 };
 
 struct TestICDDetails {
@@ -326,6 +329,18 @@ struct TestLayerDetails {
     BUILDER_VALUE(TestLayerDetails, std::string, json_name, "test_layer");
     BUILDER_VALUE(TestLayerDetails, ManifestDiscoveryType, discovery_type, ManifestDiscoveryType::generic);
     BUILDER_VALUE(TestLayerDetails, bool, is_fake, false);
+};
+
+enum class ManifestLocation {
+    null = 0,
+    driver = 1,
+    driver_env_var = 2,
+    explicit_layer = 3,
+    explicit_layer_env_var = 4,
+    explicit_layer_add_env_var = 5,
+    implicit_layer = 6,
+    override_layer = 7,
+    windows_app_package = 8,
 };
 
 struct FrameworkEnvironment {
@@ -349,15 +364,10 @@ struct FrameworkEnvironment {
     fs::path get_test_layer_path(size_t index = 0) noexcept;
     fs::path get_layer_manifest_path(size_t index = 0) noexcept;
 
+    fs::FolderManager& get_folder(ManifestLocation location) noexcept;
+
     PlatformShimWrapper platform_shim;
-    fs::FolderManager null_folder;
-    fs::FolderManager icd_folder;
-    fs::FolderManager icd_env_vars_folder;
-    fs::FolderManager explicit_layer_folder;
-    fs::FolderManager explicit_env_var_layer_folder;
-    fs::FolderManager explicit_add_env_var_layer_folder;
-    fs::FolderManager implicit_layer_folder;
-    fs::FolderManager override_layer_folder;
+    std::vector<fs::FolderManager> folders;
 
     DebugUtilsLogger debug_log;
     VulkanFunctions vulkan_functions;

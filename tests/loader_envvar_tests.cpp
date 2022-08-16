@@ -90,6 +90,19 @@ TEST(EnvVarICDOverrideSetup, version_2_negotiate_interface_version_and_icd_gipa)
     ASSERT_EQ(env.get_test_icd(0).called_vk_icd_gipa, CalledICDGIPA::vk_icd_gipa);
 }
 
+// export vk_icdNegotiateLoaderICDInterfaceVersion and vk_icdGetInstanceProcAddr
+TEST(EnvVarICDOverrideSetup, version_2_negotiate_interface_version_and_icd_gipa_unicode) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_UNICODE)
+                    .set_discovery_type(ManifestDiscoveryType::env_var)
+                    .set_json_name(TEST_JSON_NAME_VERSION_2_UNICODE));
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.CheckCreate();
+
+    ASSERT_EQ(env.get_test_icd(0).called_vk_icd_gipa, CalledICDGIPA::vk_icd_gipa);
+}
+
 // Test VK_DRIVER_FILES environment variable
 TEST(EnvVarICDOverrideSetup, TestOnlyDriverEnvVar) {
     FrameworkEnvironment env{};
@@ -248,7 +261,7 @@ TEST(EnvVarICDOverrideSetup, TestOnlyLayerEnvVar) {
     FrameworkEnvironment env{};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA));
     env.get_test_icd().physical_devices.push_back({});
-    env.platform_shim->redirect_path("/tmp/carol", env.explicit_env_var_layer_folder.location());
+    env.platform_shim->redirect_path("/tmp/carol", env.get_folder(ManifestLocation::explicit_layer_env_var).location());
 
     const char* layer_name = "TestLayer";
     env.add_explicit_layer(
@@ -297,7 +310,7 @@ TEST(EnvVarICDOverrideSetup, TestOnlyAddLayerEnvVar) {
     FrameworkEnvironment env{};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA));
     env.get_test_icd().physical_devices.push_back({});
-    env.platform_shim->redirect_path("/tmp/carol", env.explicit_add_env_var_layer_folder.location());
+    env.platform_shim->redirect_path("/tmp/carol", env.get_folder(ManifestLocation::explicit_layer_add_env_var).location());
 
     const char* layer_name = "TestLayer";
     env.add_explicit_layer(

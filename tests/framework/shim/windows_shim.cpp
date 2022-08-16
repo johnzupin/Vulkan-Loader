@@ -224,7 +224,7 @@ HRESULT __stdcall ShimEnumAdapters1_1(IDXGIFactory1 *This,
         return DXGI_ERROR_INVALID_CALL;
     }
     if (ppAdapter != nullptr) {
-        auto* pAdapter = create_IDXGIAdapter1();
+        auto *pAdapter = create_IDXGIAdapter1();
         *ppAdapter = pAdapter;
         platform_shim.dxgi_adapter_map[pAdapter] = Adapter;
     }
@@ -239,7 +239,7 @@ HRESULT __stdcall ShimEnumAdapters1_6(IDXGIFactory6 *This,
         return DXGI_ERROR_INVALID_CALL;
     }
     if (ppAdapter != nullptr) {
-        auto* pAdapter = create_IDXGIAdapter1();
+        auto *pAdapter = create_IDXGIAdapter1();
         *ppAdapter = pAdapter;
         platform_shim.dxgi_adapter_map[pAdapter] = Adapter;
     }
@@ -256,7 +256,7 @@ HRESULT __stdcall ShimEnumAdapterByGpuPreference(IDXGIFactory6 *This, _In_ UINT 
     assert(GpuPreference == DXGI_GPU_PREFERENCE::DXGI_GPU_PREFERENCE_UNSPECIFIED &&
            "Test shim assumes the GpuPreference is unspecified.");
     if (ppvAdapter != nullptr) {
-        auto* pAdapter = create_IDXGIAdapter1();
+        auto *pAdapter = create_IDXGIAdapter1();
         *ppvAdapter = pAdapter;
         platform_shim.dxgi_adapter_map[pAdapter] = Adapter;
     }
@@ -351,10 +351,12 @@ LSTATUS __stdcall ShimRegEnumValueA(HKEY hKey, DWORD dwIndex, LPSTR lpValueName,
                                     LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData) {
     const std::string *path = get_path_of_created_key(hKey);
     if (path == nullptr) return ERROR_NO_MORE_ITEMS;
+
     const auto *location_ptr = get_registry_vector(*path);
     if (location_ptr == nullptr) return ERROR_NO_MORE_ITEMS;
     const auto &location = *location_ptr;
     if (dwIndex >= location.size()) return ERROR_NO_MORE_ITEMS;
+
     if (*lpcchValueName < location[dwIndex].name.size()) return ERROR_NO_MORE_ITEMS;
     for (size_t i = 0; i < location[dwIndex].name.size(); i++) {
         lpValueName[i] = location[dwIndex].name[i];
@@ -375,6 +377,51 @@ LSTATUS __stdcall ShimRegCloseKey(HKEY hKey) {
         }
     }
     return ERROR_SUCCESS;
+}
+
+// Windows app package shims
+using PFN_GetPackagesByPackageFamily = LONG(WINAPI *)(PCWSTR, UINT32 *, PWSTR *, UINT32 *, WCHAR *);
+static PFN_GetPackagesByPackageFamily fpGetPackagesByPackageFamily = GetPackagesByPackageFamily;
+using PFN_GetPackagePathByFullName = LONG(WINAPI *)(PCWSTR, UINT32 *, PWSTR);
+static PFN_GetPackagePathByFullName fpGetPackagePathByFullName = GetPackagePathByFullName;
+
+static constexpr wchar_t package_full_name[] = L"ThisIsARandomStringSinceTheNameDoesn'tMatter";
+LONG WINAPI ShimGetPackagesByPackageFamily(_In_ PCWSTR packageFamilyName, _Inout_ UINT32 *count,
+                                           _Out_writes_opt_(*count) PWSTR *packageFullNames, _Inout_ UINT32 *bufferLength,
+                                           _Out_writes_opt_(*bufferLength) WCHAR *buffer) {
+    if (!packageFamilyName || !count || !bufferLength) return ERROR_INVALID_PARAMETER;
+    if (!platform_shim.app_package_path.empty() && wcscmp(packageFamilyName, L"Microsoft.D3DMappingLayers_8wekyb3d8bbwe") == 0) {
+        if (*count > 0 && !packageFullNames) return ERROR_INVALID_PARAMETER;
+        if (*bufferLength > 0 && !buffer) return ERROR_INVALID_PARAMETER;
+        if (*count > 1) return ERROR_INVALID_PARAMETER;
+        bool too_small = *count < 1 || *bufferLength < ARRAYSIZE(package_full_name);
+        *count = 1;
+        *bufferLength = ARRAYSIZE(package_full_name);
+        if (too_small) return ERROR_INSUFFICIENT_BUFFER;
+
+        wcscpy(buffer, package_full_name);
+        *packageFullNames = buffer;
+        return 0;
+    }
+    *count = 0;
+    *bufferLength = 0;
+    return 0;
+}
+
+LONG WINAPI ShimGetPackagePathByFullName(_In_ PCWSTR packageFullName, _Inout_ UINT32 *pathLength,
+                                         _Out_writes_opt_(*pathLength) PWSTR path) {
+    if (!packageFullName || !pathLength) return ERROR_INVALID_PARAMETER;
+    if (*pathLength > 0 && !path) return ERROR_INVALID_PARAMETER;
+    if (wcscmp(packageFullName, package_full_name) != 0) {
+        *pathLength = 0;
+        return 0;
+    }
+    if (*pathLength < platform_shim.app_package_path.size() + 1) {
+        *pathLength = static_cast<UINT32>(platform_shim.app_package_path.size() + 1);
+        return ERROR_INSUFFICIENT_BUFFER;
+    }
+    wcscpy(path, platform_shim.app_package_path.c_str());
+    return 0;
 }
 
 // Initialization
@@ -424,6 +471,8 @@ void WINAPI DetourFunctions() {
     DetourAttach(&(PVOID &)fpRegQueryValueExA, (PVOID)ShimRegQueryValueExA);
     DetourAttach(&(PVOID &)fpRegEnumValueA, (PVOID)ShimRegEnumValueA);
     DetourAttach(&(PVOID &)fpRegCloseKey, (PVOID)ShimRegCloseKey);
+    DetourAttach(&(PVOID &)fpGetPackagesByPackageFamily, (PVOID)ShimGetPackagesByPackageFamily);
+    DetourAttach(&(PVOID &)fpGetPackagePathByFullName, (PVOID)ShimGetPackagePathByFullName);
     LONG error = DetourTransactionCommit();
 
     if (error != NO_ERROR) {
@@ -451,6 +500,8 @@ void DetachFunctions() {
     DetourDetach(&(PVOID &)fpRegQueryValueExA, (PVOID)ShimRegQueryValueExA);
     DetourDetach(&(PVOID &)fpRegEnumValueA, (PVOID)ShimRegEnumValueA);
     DetourDetach(&(PVOID &)fpRegCloseKey, (PVOID)ShimRegCloseKey);
+    DetourDetach(&(PVOID &)fpGetPackagesByPackageFamily, (PVOID)ShimGetPackagesByPackageFamily);
+    DetourDetach(&(PVOID &)fpGetPackagePathByFullName, (PVOID)ShimGetPackagePathByFullName);
     DetourTransactionCommit();
 }
 
@@ -466,8 +517,8 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD dwReason, LPVOID reserved) {
     }
     return TRUE;
 }
-FRAMEWORK_EXPORT PlatformShim *get_platform_shim() {
-    platform_shim = PlatformShim();
+FRAMEWORK_EXPORT PlatformShim *get_platform_shim(std::vector<fs::FolderManager> *folders) {
+    platform_shim = PlatformShim(folders);
     return &platform_shim;
 }
 }
