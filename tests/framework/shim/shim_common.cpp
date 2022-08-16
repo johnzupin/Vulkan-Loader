@@ -60,6 +60,15 @@ std::vector<std::string> parse_env_var_list(std::string const& var) {
     return items;
 }
 
+std::vector<std::string> get_folder_contents(std::vector<fs::FolderManager>* folders, std::string folder_name) noexcept {
+    for (auto& folder : *folders) {
+        if (folder.location() == folder_name) {
+            return folder.get_files();
+        }
+    }
+    return {};
+}
+
 #if defined(WIN32)
 
 D3DKMT_Adapter& D3DKMT_Adapter::add_driver_manifest_path(fs::path const& src) { return add_path(src, driver_paths); }
@@ -108,6 +117,11 @@ void PlatformShim::add_dxgi_adapter(GpuType gpu_preference, DXGI_ADAPTER_DESC1 d
 }
 
 void PlatformShim::add_d3dkmt_adapter(D3DKMT_Adapter const& adapter) { d3dkmt_adapters.push_back(adapter); }
+
+void PlatformShim::set_app_package_path(fs::path const& path) {
+    app_package_path.resize(path.size());
+    MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, &app_package_path[0], static_cast<int>(app_package_path.size()));
+}
 
 // TODO:
 void PlatformShim::add_CM_Device_ID(std::wstring const& id, fs::path const& icd_path, fs::path const& layer_path) {

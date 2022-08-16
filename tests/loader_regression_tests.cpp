@@ -1303,6 +1303,42 @@ TEST(TryLoadWrongBinaries, BadExplicitAndImplicit) {
     ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_1) + std::string(" failed to load.")));
 }
 
+TEST(TryLoadWrongBinaries, WrongArchDriver) {
+    FrameworkEnvironment env{};
+    // Intentionally set the wrong arch
+    env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2}.icd_manifest.set_library_arch(sizeof(void*) == 4 ? "64" : "32"));
+
+    env.get_test_icd().physical_devices.emplace_back("physical_device_0");
+
+    DebugUtilsLogger log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, log);
+    inst.CheckCreate(VK_ERROR_INCOMPATIBLE_DRIVER);
+    ASSERT_TRUE(log.find(
+        "loader_icd_scan: Driver library architecture doesn't match the current running architecture, skipping this driver"));
+}
+
+TEST(TryLoadWrongBinaries, WrongArchLayer) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2});
+    env.get_test_icd().physical_devices.emplace_back("physical_device_0");
+
+    const char* layer_name = "TestLayer";
+    env.add_explicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
+                                                         .set_name(layer_name)
+                                                         .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
+                                                         // Intentionally set the wrong arch
+                                                         .set_library_arch(sizeof(void*) == 4 ? "64" : "32")),
+                           "test_layer.json");
+
+    DebugUtilsLogger log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, log);
+    inst.create_info.add_layer(layer_name);
+    inst.CheckCreate(VK_ERROR_LAYER_NOT_PRESENT);
+    ASSERT_TRUE(log.find("Layer library architecture doesn't match the current running architecture, skipping this layer"));
+}
+
 TEST(EnumeratePhysicalDeviceGroups, OneCall) {
     FrameworkEnvironment env{};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
@@ -1353,6 +1389,35 @@ TEST(EnumeratePhysicalDeviceGroups, OneCall) {
         for (uint32_t dev = 0; dev < max_physical_device_count; ++dev) {
             ASSERT_EQ(true, found[dev]);
         }
+        for (auto& group : group_props) {
+            VkDeviceGroupDeviceCreateInfoKHR group_info{};
+            group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+            group_info.physicalDeviceCount = group.physicalDeviceCount;
+            group_info.pPhysicalDevices = &group.physicalDevices[0];
+            VkBaseInStructure spacer_structure{};
+            spacer_structure.sType = static_cast<VkStructureType>(100000);
+            spacer_structure.pNext = reinterpret_cast<const VkBaseInStructure*>(&group_info);
+            DeviceWrapper dev{inst};
+            dev.create_info.dev.pNext = &spacer_structure;
+            dev.CheckCreate(group.physicalDevices[0]);
+
+            // This convoluted logic makes sure that the pNext chain is unmolested after being passed into vkCreateDevice
+            // While not expected for applications to iterate over this chain, since it is const it is important to make sure
+            // that the chain didn't change somehow, and especially so that iterating it doesn't crash.
+            int count = 0;
+            const VkBaseInStructure* pNext = reinterpret_cast<const VkBaseInStructure*>(dev.create_info.dev.pNext);
+            while (pNext != nullptr) {
+                if (pNext->sType == VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO) {
+                    ASSERT_EQ(&group_info, reinterpret_cast<const VkDeviceGroupDeviceCreateInfoKHR*>(pNext));
+                }
+                if (pNext->sType == 100000) {
+                    ASSERT_EQ(&spacer_structure, pNext);
+                }
+                pNext = pNext->pNext;
+                count++;
+            }
+            ASSERT_EQ(count, 2);
+        }
     }
     driver.add_instance_extension({VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME});
     // Extension
@@ -1391,6 +1456,18 @@ TEST(EnumeratePhysicalDeviceGroups, OneCall) {
         }
         for (uint32_t dev = 0; dev < max_physical_device_count; ++dev) {
             ASSERT_EQ(true, found[dev]);
+        }
+        for (auto& group : group_props) {
+            VkDeviceGroupDeviceCreateInfoKHR group_info{};
+            group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+            group_info.physicalDeviceCount = group.physicalDeviceCount;
+            group_info.pPhysicalDevices = &group.physicalDevices[0];
+            VkBaseInStructure spacer_structure{};
+            spacer_structure.sType = static_cast<VkStructureType>(100000);
+            spacer_structure.pNext = reinterpret_cast<const VkBaseInStructure*>(&group_info);
+            DeviceWrapper dev{inst};
+            dev.create_info.dev.pNext = &spacer_structure;
+            dev.CheckCreate(group.physicalDevices[0]);
         }
     }
 }
@@ -1448,6 +1525,15 @@ TEST(EnumeratePhysicalDeviceGroups, TwoCall) {
         for (uint32_t dev = 0; dev < max_physical_device_count; ++dev) {
             ASSERT_EQ(true, found[dev]);
         }
+        for (auto& group : group_props) {
+            VkDeviceGroupDeviceCreateInfoKHR group_info{};
+            group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+            group_info.physicalDeviceCount = group.physicalDeviceCount;
+            group_info.pPhysicalDevices = &group.physicalDevices[0];
+            DeviceWrapper dev{inst};
+            dev.create_info.dev.pNext = &group_info;
+            dev.CheckCreate(group.physicalDevices[0]);
+        }
     }
     driver.add_instance_extension({VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME});
     // Extension
@@ -1489,6 +1575,15 @@ TEST(EnumeratePhysicalDeviceGroups, TwoCall) {
         }
         for (uint32_t dev = 0; dev < max_physical_device_count; ++dev) {
             ASSERT_EQ(true, found[dev]);
+        }
+        for (auto& group : group_props) {
+            VkDeviceGroupDeviceCreateInfoKHR group_info{};
+            group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+            group_info.physicalDeviceCount = group.physicalDeviceCount;
+            group_info.pPhysicalDevices = &group.physicalDevices[0];
+            DeviceWrapper dev{inst};
+            dev.create_info.dev.pNext = &group_info;
+            dev.CheckCreate(group.physicalDevices[0]);
         }
     }
 }
@@ -1545,6 +1640,15 @@ TEST(EnumeratePhysicalDeviceGroups, TwoCallIncomplete) {
             }
             ASSERT_EQ(true, found);
         }
+        for (auto& group : group_props) {
+            VkDeviceGroupDeviceCreateInfoKHR group_info{};
+            group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+            group_info.physicalDeviceCount = group.physicalDeviceCount;
+            group_info.pPhysicalDevices = &group.physicalDevices[0];
+            DeviceWrapper dev{inst};
+            dev.create_info.dev.pNext = &group_info;
+            dev.CheckCreate(group.physicalDevices[0]);
+        }
     }
     driver.add_instance_extension({VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME});
     // Extension
@@ -1586,6 +1690,15 @@ TEST(EnumeratePhysicalDeviceGroups, TwoCallIncomplete) {
                 }
             }
             ASSERT_EQ(true, found);
+        }
+        for (auto& group : group_props) {
+            VkDeviceGroupDeviceCreateInfoKHR group_info{};
+            group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+            group_info.physicalDeviceCount = group.physicalDeviceCount;
+            group_info.pPhysicalDevices = &group.physicalDevices[0];
+            DeviceWrapper dev{inst};
+            dev.create_info.dev.pNext = &group_info;
+            dev.CheckCreate(group.physicalDevices[0]);
         }
     }
 }
@@ -1667,6 +1780,15 @@ TEST(EnumeratePhysicalDeviceGroups, TestCoreVersusExtensionSameReturns) {
                 }
             }
         }
+    }
+    for (auto& group : core_group_props) {
+        VkDeviceGroupDeviceCreateInfoKHR group_info{};
+        group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+        group_info.physicalDeviceCount = group.physicalDeviceCount;
+        group_info.pPhysicalDevices = &group.physicalDevices[0];
+        DeviceWrapper dev{inst};
+        dev.create_info.dev.pNext = &group_info;
+        dev.CheckCreate(group.physicalDevices[0]);
     }
 }
 
@@ -1752,6 +1874,15 @@ TEST(EnumeratePhysicalDeviceGroups, CallThriceAddGroupInBetween) {
             }
         }
     }
+    for (auto& group : group_props_after) {
+        VkDeviceGroupDeviceCreateInfoKHR group_info{};
+        group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+        group_info.physicalDeviceCount = group.physicalDeviceCount;
+        group_info.pPhysicalDevices = &group.physicalDevices[0];
+        DeviceWrapper dev{inst};
+        dev.create_info.dev.pNext = &group_info;
+        dev.CheckCreate(group.physicalDevices[0]);
+    }
 }
 
 // Start with 7 devices in 4 different groups, and then remove a group,
@@ -1828,6 +1959,15 @@ TEST(EnumeratePhysicalDeviceGroups, CallTwiceRemoveGroupInBetween) {
             }
         }
     }
+    for (auto& group : group_props_after) {
+        VkDeviceGroupDeviceCreateInfoKHR group_info{};
+        group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+        group_info.physicalDeviceCount = group.physicalDeviceCount;
+        group_info.pPhysicalDevices = &group.physicalDevices[0];
+        DeviceWrapper dev{inst};
+        dev.create_info.dev.pNext = &group_info;
+        dev.CheckCreate(group.physicalDevices[0]);
+    }
 }
 
 // Start with 6 devices in 3 different groups, and then add a device to the middle group,
@@ -1902,6 +2042,15 @@ TEST(EnumeratePhysicalDeviceGroups, CallTwiceAddDeviceInBetween) {
                 break;
             }
         }
+    }
+    for (auto& group : group_props_after) {
+        VkDeviceGroupDeviceCreateInfoKHR group_info{};
+        group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+        group_info.physicalDeviceCount = group.physicalDeviceCount;
+        group_info.pPhysicalDevices = &group.physicalDevices[0];
+        DeviceWrapper dev{inst};
+        dev.create_info.dev.pNext = &group_info;
+        dev.CheckCreate(group.physicalDevices[0]);
     }
 }
 
@@ -1988,6 +2137,15 @@ TEST(EnumeratePhysicalDeviceGroups, CallTwiceRemoveDeviceInBetween) {
                 break;
             }
         }
+    }
+    for (auto& group : group_props_after) {
+        VkDeviceGroupDeviceCreateInfoKHR group_info{};
+        group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+        group_info.physicalDeviceCount = group.physicalDeviceCount;
+        group_info.pPhysicalDevices = &group.physicalDevices[0];
+        DeviceWrapper dev{inst};
+        dev.create_info.dev.pNext = &group_info;
+        dev.CheckCreate(group.physicalDevices[0]);
     }
 }
 
@@ -2095,6 +2253,15 @@ TEST(EnumeratePhysicalDeviceGroups, MultipleAddRemoves) {
     ASSERT_EQ(before_group_count, returned_group_count);
     for (uint32_t group = 0; group < before_group_count; ++group) {
         ASSERT_EQ(group_props_after_add_device[group].physicalDeviceCount, after_add_dev_expected_counts[group]);
+    }
+    for (auto& group : group_props_after_add_device) {
+        VkDeviceGroupDeviceCreateInfoKHR group_info{};
+        group_info.sType = VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO;
+        group_info.physicalDeviceCount = group.physicalDeviceCount;
+        group_info.pPhysicalDevices = &group.physicalDevices[0];
+        DeviceWrapper dev{inst};
+        dev.create_info.dev.pNext = &group_info;
+        dev.CheckCreate(group.physicalDevices[0]);
     }
 }
 
@@ -2650,7 +2817,7 @@ TEST(SortedPhysicalDevices, DevicesSortedDisabled) {
 
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2, VK_API_VERSION_1_0));
     env.get_test_icd(0).add_instance_extension({VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME});
-    env.get_test_icd(0).physical_devices.push_back({"pd0", 7});
+    env.get_test_icd(0).physical_devices.push_back({"pd0", 4});
     FillInRandomDeviceProps(env.get_test_icd(0).physical_devices.back().properties, VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
                             VK_API_VERSION_1_0, 888, 0xAAA001);
     env.get_test_icd(0).physical_devices.back().extensions.push_back({VK_EXT_PCI_BUS_INFO_EXTENSION_NAME, 0});
@@ -2668,11 +2835,11 @@ TEST(SortedPhysicalDevices, DevicesSortedDisabled) {
 
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2, VK_API_VERSION_1_0));
     env.get_test_icd(2).add_instance_extension({VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME});
-    env.get_test_icd(2).physical_devices.push_back({"pd3", 1});
+    env.get_test_icd(2).physical_devices.push_back({"pd3", 7});
     FillInRandomDeviceProps(env.get_test_icd(2).physical_devices.back().properties, VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
                             VK_API_VERSION_1_0, 75, 0xCCCC001);
     env.get_test_icd(2).physical_devices.back().extensions.push_back({VK_EXT_PCI_BUS_INFO_EXTENSION_NAME, 0});
-    env.get_test_icd(2).physical_devices.push_back({"pd4", 4});
+    env.get_test_icd(2).physical_devices.push_back({"pd4", 1});
     FillInRandomDeviceProps(env.get_test_icd(2).physical_devices.back().properties, VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
                             VK_API_VERSION_1_0, 75, 0xCCCC002);
     env.get_test_icd(2).physical_devices.back().extensions.push_back({VK_EXT_PCI_BUS_INFO_EXTENSION_NAME, 0});
@@ -2704,17 +2871,17 @@ TEST(SortedPhysicalDevices, DevicesSortedDisabled) {
 
         switch (dev) {
             case 0:
-                if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || strcmp("pd3", props.deviceName)) {
-                    sorted = false;
-                }
-                break;
-            case 1:
                 if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || strcmp("pd4", props.deviceName)) {
                     sorted = false;
                 }
                 break;
-            case 2:
+            case 1:
                 if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || strcmp("pd0", props.deviceName)) {
+                    sorted = false;
+                }
+                break;
+            case 2:
+                if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || strcmp("pd3", props.deviceName)) {
                     sorted = false;
                 }
                 break;
@@ -3319,3 +3486,14 @@ TEST(PortabilityICDConfiguration, PortabilityAndRegularICDPreInstanceFunctions) 
         ASSERT_EQ(layer_count, 0U);
     }
 }
+
+#ifdef _WIN32
+TEST(AppPackageDriverDiscovery, AppPackageTest) {
+    FrameworkEnvironment env;
+    env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2}.set_discovery_type(ManifestDiscoveryType::windows_app_package));
+    env.get_test_icd().physical_devices.push_back({});
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.CheckCreate();
+}
+#endif

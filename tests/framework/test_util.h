@@ -107,7 +107,6 @@
 #if defined(WIN32)
 void set_env_var(std::string const& name, std::string const& value);
 void remove_env_var(std::string const& name);
-#define ENV_VAR_BUFFER_SIZE 4096
 std::string get_env_var(std::string const& name, bool report_failure = true);
 
 #elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
@@ -204,10 +203,12 @@ int delete_folder(path const& folder);
 
 class FolderManager {
    public:
-    explicit FolderManager(path root_path, std::string name);
-    ~FolderManager();
+    explicit FolderManager(path root_path, std::string name) noexcept;
+    ~FolderManager() noexcept;
     FolderManager(FolderManager const&) = delete;
     FolderManager& operator=(FolderManager const&) = delete;
+    FolderManager(FolderManager&& other) noexcept;
+    FolderManager& operator=(FolderManager&& other) noexcept;
 
     path write_manifest(std::string const& name, std::string const& contents);
 
@@ -219,6 +220,8 @@ class FolderManager {
 
     // location of the managed folder
     path location() const { return folder; }
+
+    std::vector<std::string> get_files() const { return files; }
 
    private:
     path folder;
@@ -243,13 +246,22 @@ inline void copy_string_to_char_array(std::string const& src, char* dst, size_t 
 }
 
 #if defined(WIN32)
+// Convert an UTF-16 wstring to an UTF-8 string
+std::string narrow(const std::wstring &utf16);
+// Convert an UTF-8 string to an UTF-16 wstring
+std::wstring widen(const std::string &utf8);
+#endif
+
+#if defined(WIN32)
 typedef HMODULE loader_platform_dl_handle;
 static loader_platform_dl_handle loader_platform_open_library(const char* lib_path) {
+    std::wstring lib_path_utf16 = widen(lib_path);
     // Try loading the library the original way first.
-    loader_platform_dl_handle lib_handle = LoadLibrary(lib_path);
+    loader_platform_dl_handle lib_handle = LoadLibraryW(lib_path_utf16.c_str());
     if (lib_handle == nullptr && GetLastError() == ERROR_MOD_NOT_FOUND) {
         // If that failed, then try loading it with broader search folders.
-        lib_handle = LoadLibraryEx(lib_path, nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
+        lib_handle =
+            LoadLibraryExW(lib_path_utf16.c_str(), nullptr, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
     }
     return lib_handle;
 }
@@ -463,6 +475,18 @@ inline std::ostream& operator<<(std::ostream& os, const VkResult& result) {
             return os << "VK_RESULT_MAX_ENUM";
         case (VK_ERROR_COMPRESSION_EXHAUSTED_EXT):
             return os << "VK_ERROR_COMPRESSION_EXHAUSTED_EXT";
+        case (VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR):
+            return os << "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR";
+        case (VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR):
+            return os << "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR";
+        case (VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR):
+            return os << "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR";
+        case (VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR):
+            return os << "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR";
+        case (VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR):
+            return os << "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR";
+        case (VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR):
+            return os << "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR";
     }
     return os << static_cast<int32_t>(result);
 }
@@ -531,6 +555,7 @@ struct ManifestICD {
     BUILDER_VALUE(ManifestICD, uint32_t, api_version, 0)
     BUILDER_VALUE(ManifestICD, std::string, lib_path, {})
     BUILDER_VALUE(ManifestICD, bool, is_portability_driver, false)
+    BUILDER_VALUE(ManifestICD, std::string, library_arch, "")
     std::string get_manifest_str() const;
 };
 
@@ -577,6 +602,7 @@ struct ManifestLayer {
         BUILDER_VECTOR(LayerDescription, std::string, override_paths, override_path)
         BUILDER_VECTOR(LayerDescription, FunctionOverride, pre_instance_functions, pre_instance_function)
         BUILDER_VECTOR(LayerDescription, std::string, app_keys, app_key)
+        BUILDER_VALUE(LayerDescription, std::string, library_arch, "")
 
         std::string get_manifest_str() const;
         VkLayerProperties get_layer_properties() const;

@@ -1,7 +1,9 @@
 /*
- * Copyright (c) 2022 The Khronos Group Inc.
- * Copyright (c) 2022 Valve Corporation
- * Copyright (c) 2022 LunarG, Inc.
+ *
+ * Copyright (c) 2014-2022 The Khronos Group Inc.
+ * Copyright (c) 2014-2022 Valve Corporation
+ * Copyright (c) 2014-2022 LunarG, Inc.
+ * Copyright (C) 2015 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +19,23 @@
  *
  * Author: Jon Ashburn <jon@lunarg.com>
  * Author: Courtney Goeltzenleuchter <courtney@LunarG.com>
- * Author: Mark Young <marky@lunarg.com>
+ * Author: Chia-I Wu <olvaffe@gmail.com>
+ * Author: Chia-I Wu <olv@lunarg.com>
+ * Author: Mark Lobodzinski <mark@LunarG.com>
  * Author: Lenny Komow <lenny@lunarg.com>
  * Author: Charles Giessen <charles@lunarg.com>
  */
 
 #pragma once
 
-#include "loader_common.h"
+#if defined(_WIN32)
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
 
-void loader_init_dispatch_dev_ext(struct loader_instance *inst, struct loader_device *dev);
-void *loader_dev_ext_gpa_tramp(struct loader_instance *inst, const char *funcName);
-void *loader_dev_ext_gpa_term(struct loader_instance *inst, const char *funcName);
-
-void *loader_phys_dev_ext_gpa_tramp(struct loader_instance *inst, const char *funcName);
-void *loader_phys_dev_ext_gpa_term(struct loader_instance *inst, const char *funcName);
-
-void loader_free_dev_ext_table(struct loader_instance *inst);
-void loader_free_phys_dev_ext_table(struct loader_instance *inst);
+#if defined(__linux__) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__QNXNTO__) || defined(__FreeBSD__)
+#define loader_stack_alloc(size) alloca(size)
+#elif defined(_WIN32)
+#define loader_stack_alloc(size) _alloca(size)
+#endif  // defined(_WIN32)

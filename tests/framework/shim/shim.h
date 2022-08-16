@@ -37,6 +37,7 @@
 #include <initguid.h>
 #include <devpkey.h>
 #include <winternl.h>
+#include <appmodel.h>
 
 #define CINTERFACE
 #include <dxgi1_6.h>
@@ -109,10 +110,28 @@ struct D3DKMT_Adapter {
     D3DKMT_Adapter& add_path(fs::path src, std::vector<std::wstring>& dest);
 };
 
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+
+struct DirEntry {
+    DIR* directory;
+    std::string folder_path;
+    std::vector<struct dirent*> contents;
+    size_t current_index;
+};
+
 #endif
+
+struct FrameworkEnvironment;  // forward declaration
+
 // Necessary to have inline definitions as shim is a dll and thus functions
 // defined in the .cpp wont be found by the rest of the application
 struct PlatformShim {
+    PlatformShim() = default;
+    PlatformShim(std::vector<fs::FolderManager>* folders) : folders(folders) {}
+
+    // Used to get info about which drivers & layers have been added to folders
+    std::vector<fs::FolderManager>* folders;
+
     // Test Framework interface
     void reset();
 
@@ -133,6 +152,7 @@ struct PlatformShim {
 
     void add_dxgi_adapter(GpuType gpu_preference, DXGI_ADAPTER_DESC1 desc1);
     void add_d3dkmt_adapter(D3DKMT_Adapter const& adapter);
+    void set_app_package_path(fs::path const& path);
 
     uint32_t next_adapter_handle = 1;  // increment everytime add_dxgi_adapter is called
     std::vector<DXGIAdapter> dxgi_adapters;
@@ -155,6 +175,8 @@ struct PlatformShim {
     std::vector<RegistryEntry> hkey_local_machine_implicit_layers;
     std::vector<RegistryEntry> hkey_local_machine_drivers;
 
+    std::wstring app_package_path;
+
     // When a key is created, return the index of the
     size_t created_key_count = 0;
     std::vector<HKeyHandle> created_keys;
@@ -170,20 +192,24 @@ struct PlatformShim {
 
     void set_elevated_privilege(bool elev) { use_fake_elevation = elev; }
     bool use_fake_elevation = false;
+
+    std::vector<DirEntry> dir_entries;
 #endif
 };
 
 std::vector<std::string> parse_env_var_list(std::string const& var);
 std::string category_path_name(ManifestCategory category);
 
+std::vector<std::string> get_folder_contents(std::vector<fs::FolderManager>* folders, std::string folder_name) noexcept;
+
 extern "C" {
 // dynamically link on windows and macos
 #if defined(WIN32) || defined(__APPLE__)
-using PFN_get_platform_shim = PlatformShim* (*)();
+using PFN_get_platform_shim = PlatformShim* (*)(std::vector<fs::FolderManager>* folders);
 #define GET_PLATFORM_SHIM_STR "get_platform_shim"
 
 #elif defined(__linux__) || defined(__FreeBSD__)
 // statically link on linux
-PlatformShim* get_platform_shim();
+PlatformShim* get_platform_shim(std::vector<fs::FolderManager>* folders);
 #endif
 }
