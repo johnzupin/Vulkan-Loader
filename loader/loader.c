@@ -199,18 +199,10 @@ VKAPI_ATTR VkResult VKAPI_CALL vkSetDeviceDispatch(VkDevice device, void *object
 }
 
 void loader_free_layer_properties(const struct loader_instance *inst, struct loader_layer_properties *layer_properties) {
-    if (layer_properties->component_layer_names) {
-        loader_instance_heap_free(inst, layer_properties->component_layer_names);
-    }
-    if (layer_properties->override_paths) {
-        loader_instance_heap_free(inst, layer_properties->override_paths);
-    }
-    if (layer_properties->blacklist_layer_names) {
-        loader_instance_heap_free(inst, layer_properties->blacklist_layer_names);
-    }
-    if (layer_properties->app_key_paths) {
-        loader_instance_heap_free(inst, layer_properties->app_key_paths);
-    }
+    loader_instance_heap_free(inst, layer_properties->component_layer_names);
+    loader_instance_heap_free(inst, layer_properties->override_paths);
+    loader_instance_heap_free(inst, layer_properties->blacklist_layer_names);
+    loader_instance_heap_free(inst, layer_properties->app_key_paths);
 
     loader_destroy_generic_list(inst, (struct loader_generic_list *)&layer_properties->instance_extension_list);
 
@@ -965,23 +957,7 @@ bool loader_implicit_layer_is_enabled(const struct loader_instance *inst, const 
 static void loader_add_implicit_layer(const struct loader_instance *inst, const struct loader_layer_properties *prop,
                                       struct loader_layer_list *target_list, struct loader_layer_list *expanded_target_list,
                                       const struct loader_layer_list *source_list) {
-    bool enable = loader_implicit_layer_is_enabled(inst, prop);
-
-    // If the implicit layer is supposed to be enable, make sure the layer supports at least the same API version
-    // that the application is asking (i.e. layer's API >= app's API).  If it's not, disable this layer.
-    if (enable) {
-        loader_api_version prop_version = loader_make_version(prop->info.specVersion);
-        if (!loader_check_version_meets_required(inst->app_api_version, prop_version)) {
-            loader_log(inst, VULKAN_LOADER_INFO_BIT, 0,
-                       "loader_add_implicit_layer: Disabling implicit layer %s for using an old API version %u.%u versus "
-                       "application requested %u.%u",
-                       prop->info.layerName, prop_version.major, prop_version.minor, inst->app_api_version.major,
-                       inst->app_api_version.minor);
-            enable = false;
-        }
-    }
-
-    if (enable) {
+    if (loader_implicit_layer_is_enabled(inst, prop)) {
         if (0 == (prop->type_flags & VK_LAYER_TYPE_FLAG_META_LAYER)) {
             loader_add_layer_properties_to_list(inst, target_list, 1, prop);
             if (NULL != expanded_target_list) {
@@ -1643,11 +1619,7 @@ static VkResult loader_get_json(const struct loader_instance *inst, const char *
     size_t len;
     VkResult res = VK_SUCCESS;
 
-    if (NULL == json) {
-        loader_log(inst, VULKAN_LOADER_ERROR_BIT, 0, "loader_get_json: Received invalid JSON file");
-        res = VK_ERROR_INITIALIZATION_FAILED;
-        goto out;
-    }
+    assert(json != NULL);
 
     *json = NULL;
 
@@ -1705,9 +1677,7 @@ static VkResult loader_get_json(const struct loader_instance *inst, const char *
     }
 
 out:
-    if (NULL != json_buf) {
-        loader_instance_heap_free(inst, json_buf);
-    }
+    loader_instance_heap_free(inst, json_buf);
     if (NULL != file) {
         fclose(file);
     }
@@ -2659,9 +2629,7 @@ static VkResult loader_add_layer_properties(const struct loader_instance *inst, 
     }
 
 out:
-    if (NULL != file_vers) {
-        loader_instance_heap_free(inst, file_vers);
-    }
+    loader_instance_heap_free(inst, file_vers);
 
     return result;
 }
@@ -2914,10 +2882,6 @@ static VkResult read_data_files_in_search_paths(const struct loader_instance *in
     bool use_first_found_manifest = false;
 #ifndef _WIN32
     size_t rel_size = 0;  // unused in windows, dont declare so no compiler warnings are generated
-    bool xdg_config_home_secenv_alloc = true;
-    bool xdg_config_dirs_secenv_alloc = true;
-    bool xdg_data_home_secenv_alloc = true;
-    bool xdg_data_dirs_secenv_alloc = true;
 #endif
 
 #if defined(_WIN32)
@@ -2926,14 +2890,8 @@ static VkResult read_data_files_in_search_paths(const struct loader_instance *in
     // Determine how much space is needed to generate the full search path
     // for the current manifest files.
     char *xdg_config_home = loader_secure_getenv("XDG_CONFIG_HOME", inst);
-    if (NULL == xdg_config_home) {
-        xdg_config_home_secenv_alloc = false;
-    }
-
     char *xdg_config_dirs = loader_secure_getenv("XDG_CONFIG_DIRS", inst);
-    if (NULL == xdg_config_dirs) {
-        xdg_config_dirs_secenv_alloc = false;
-    }
+
 #if !defined(__Fuchsia__) && !defined(__QNXNTO__)
     if (NULL == xdg_config_dirs || '\0' == xdg_config_dirs[0]) {
         xdg_config_dirs = FALLBACK_CONFIG_DIRS;
@@ -2941,14 +2899,8 @@ static VkResult read_data_files_in_search_paths(const struct loader_instance *in
 #endif
 
     char *xdg_data_home = loader_secure_getenv("XDG_DATA_HOME", inst);
-    if (NULL == xdg_data_home) {
-        xdg_data_home_secenv_alloc = false;
-    }
-
     char *xdg_data_dirs = loader_secure_getenv("XDG_DATA_DIRS", inst);
-    if (NULL == xdg_data_dirs) {
-        xdg_data_dirs_secenv_alloc = false;
-    }
+
 #if !defined(__Fuchsia__) && !defined(__QNXNTO__)
     if (NULL == xdg_data_dirs || '\0' == xdg_data_dirs[0]) {
         xdg_data_dirs = FALLBACK_DATA_DIRS;
@@ -3233,46 +3185,22 @@ static VkResult read_data_files_in_search_paths(const struct loader_instance *in
 
 out:
 
-    if (NULL != additional_env) {
-        loader_free_getenv(additional_env, inst);
-    }
-    if (NULL != override_env) {
-        loader_free_getenv(override_env, inst);
-    }
+    loader_free_getenv(additional_env, inst);
+    loader_free_getenv(override_env, inst);
 #if defined(_WIN32)
-    if (NULL != package_path) {
-        loader_instance_heap_free(inst, package_path);
-    }
+    loader_instance_heap_free(inst, package_path);
 #else
-    if (xdg_config_home_secenv_alloc) {
-        loader_free_getenv(xdg_config_home, inst);
-    }
-    if (xdg_config_dirs_secenv_alloc) {
-        loader_free_getenv(xdg_config_dirs, inst);
-    }
-    if (xdg_data_home_secenv_alloc) {
-        loader_free_getenv(xdg_data_home, inst);
-    }
-    if (xdg_data_dirs_secenv_alloc) {
-        loader_free_getenv(xdg_data_dirs, inst);
-    }
-    if (NULL != xdg_data_home) {
-        loader_free_getenv(xdg_data_home, inst);
-    }
-    if (NULL != home) {
-        loader_free_getenv(home, inst);
-    }
-    if (NULL != default_data_home) {
-        loader_instance_heap_free(inst, default_data_home);
-    }
-    if (NULL != default_config_home) {
-        loader_instance_heap_free(inst, default_config_home);
-    }
+    loader_free_getenv(xdg_config_home, inst);
+    loader_free_getenv(xdg_config_dirs, inst);
+    loader_free_getenv(xdg_data_home, inst);
+    loader_free_getenv(xdg_data_dirs, inst);
+    loader_free_getenv(xdg_data_home, inst);
+    loader_free_getenv(home, inst);
+    loader_instance_heap_free(inst, default_data_home);
+    loader_instance_heap_free(inst, default_config_home);
 #endif
 
-    if (NULL != search_path) {
-        loader_instance_heap_free(inst, search_path);
-    }
+    loader_instance_heap_free(inst, search_path);
 
     return vk_result;
 }
@@ -3370,9 +3298,177 @@ out:
     return res;
 }
 
-void loader_init_icd_lib_list() {}
+struct ICDManifestInfo {
+    char full_library_path[MAX_STRING_SIZE];
+    uint32_t version;
+};
 
-void loader_destroy_icd_lib_list() {}
+VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *file_str, struct ICDManifestInfo *icd,
+                                   bool *skipped_portability_drivers) {
+    VkResult res = VK_SUCCESS;
+    cJSON *json = NULL;
+    cJSON *item = NULL, *itemICD = NULL;
+
+    char *file_vers_str = NULL;
+    char *library_path = NULL;
+    char *library_arch_str = NULL;
+    char *version_str = NULL;
+
+    if (file_str == NULL) {
+        goto out;
+    }
+
+    res = loader_get_json(inst, file_str, &json);
+    if (res != VK_SUCCESS || NULL == json) {
+        goto out;
+    }
+
+    item = cJSON_GetObjectItem(json, "file_format_version");
+    if (item == NULL) {
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: ICD JSON %s does not have a \'file_format_version\' field. Skipping ICD JSON.",
+                   file_str);
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+
+    file_vers_str = cJSON_Print(item);
+    if (NULL == file_vers_str) {
+        // Only reason the print can fail is if there was an allocation issue
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: Failed retrieving ICD JSON %s \'file_format_version\' field. Skipping ICD JSON",
+                   file_str);
+        res = VK_ERROR_OUT_OF_HOST_MEMORY;
+        goto out;
+    }
+    loader_log(inst, VULKAN_LOADER_DRIVER_BIT, 0, "Found ICD manifest file %s, version %s", file_str, file_vers_str);
+
+    // Get the version of the driver manifest
+    loader_api_version json_file_version = loader_make_full_version(loader_parse_version_string(file_vers_str));
+
+    // Loader only knows versions 1.0.0 and 1.0.1, anything above it is unknown
+    if (loader_check_version_meets_required(loader_combine_version(1, 0, 2), json_file_version)) {
+        loader_log(inst, VULKAN_LOADER_INFO_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: %s has unknown icd manifest file version %d.%d.%d. May cause errors.", file_str,
+                   json_file_version.major, json_file_version.minor, json_file_version.patch);
+    }
+
+    itemICD = cJSON_GetObjectItem(json, "ICD");
+    if (itemICD == NULL) {
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: Can not find \'ICD\' object in ICD JSON file %s. Skipping ICD JSON", file_str);
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+
+    item = cJSON_GetObjectItem(itemICD, "library_path");
+    if (item == NULL) {
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: Failed to find \'library_path\' object in ICD JSON file %s. Skipping ICD JSON.",
+                   file_str);
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+    library_path = cJSON_Print(item);
+    if (!library_path || strlen(library_path) == 0) {
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: Failed retrieving ICD JSON %s \'library_path\' field. Skipping ICD JSON.", file_str);
+        res = VK_ERROR_OUT_OF_HOST_MEMORY;
+        goto out;
+    }
+    size_t library_path_len = strlen(library_path);
+    // cJSON prints everything with quotes so they need to be removed.
+    // move every char forward one, so the leading quote is replaced.
+    memmove(library_path, &library_path[1], library_path_len - 2);
+    // replace end quote with null terminator
+    library_path[library_path_len - 2] = '\0';
+
+    if (strlen(library_path) == 0) {
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: ICD JSON %s \'library_path\' field is empty. Skipping ICD JSON.", file_str);
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+
+    // Print out the paths being searched if debugging is enabled
+    loader_log(inst, VULKAN_LOADER_DEBUG_BIT, 0, "Searching for ICD drivers named %s", library_path);
+    if (loader_platform_is_path(library_path)) {
+        // a relative or absolute path
+        char *name_copy = loader_stack_alloc(strlen(file_str) + 1);
+        char *rel_base;
+        strcpy(name_copy, file_str);
+        rel_base = loader_platform_dirname(name_copy);
+        loader_expand_path(library_path, rel_base, MAX_STRING_SIZE, &icd->full_library_path[0]);
+    } else {
+// a filename which is assumed in a system directory
+#if defined(DEFAULT_VK_DRIVERS_PATH)
+        loader_get_fullpath(library_path, DEFAULT_VK_DRIVERS_PATH, MAX_STRING_SIZE, &icd->full_library_path[0]);
+#else
+        loader_get_fullpath(library_path, "", MAX_STRING_SIZE, &icd->full_library_path[0]);
+#endif
+    }
+
+    item = cJSON_GetObjectItem(itemICD, "api_version");
+    if (item == NULL) {
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: ICD JSON %s does not have an \'api_version\' field. Skipping ICD JSON.", file_str);
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+    version_str = cJSON_Print(item);
+    if (NULL == version_str) {
+        // Only reason the print can fail is if there was an allocation issue
+        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: Failed retrieving ICD JSON %s \'api_version\' field. Skipping ICD JSON.", file_str);
+
+        res = VK_ERROR_OUT_OF_HOST_MEMORY;
+        goto out;
+    }
+    icd->version = loader_parse_version_string(version_str);
+
+    if (VK_API_VERSION_VARIANT(icd->version) != 0) {
+        loader_log(inst, VULKAN_LOADER_INFO_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                   "loader_parse_icd_manifest: Driver's ICD JSON %s \'api_version\' field contains a non-zero variant value of %d. "
+                   " Skipping ICD JSON.",
+                   file_str, VK_API_VERSION_VARIANT(icd->version));
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+
+    // Skip over ICD's which contain a true "is_portability_driver" value whenever the application doesn't enable
+    // portability enumeration.
+    item = cJSON_GetObjectItem(itemICD, "is_portability_driver");
+    if (item != NULL && item->type == cJSON_True && inst && !inst->portability_enumeration_enabled) {
+        if (skipped_portability_drivers) {
+            *skipped_portability_drivers = true;
+        }
+        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        goto out;
+    }
+
+    item = cJSON_GetObjectItem(itemICD, "library_arch");
+    if (item != NULL) {
+        library_arch_str = cJSON_Print(item);
+        if (NULL != library_arch_str) {
+            // cJSON includes the quotes by default, so we need to look for those here
+            if ((strncmp(library_arch_str, "\"32\"", 4) == 0 && sizeof(void *) != 4) ||
+                (strncmp(library_arch_str, "\"64\"", 4) == 0 && sizeof(void *) != 8)) {
+                loader_log(inst, VULKAN_LOADER_INFO_BIT, 0,
+                           "loader_parse_icd_manifest: Driver library architecture doesn't match the current running "
+                           "architecture, skipping this driver");
+                res = VK_ERROR_INCOMPATIBLE_DRIVER;
+                goto out;
+            }
+        }
+    }
+out:
+    cJSON_Delete(json);
+    loader_instance_heap_free(inst, file_vers_str);
+    loader_instance_heap_free(inst, library_path);
+    loader_instance_heap_free(inst, version_str);
+    loader_instance_heap_free(inst, library_arch_str);
+    return res;
+}
 
 // Try to find the Vulkan ICD driver(s).
 //
@@ -3390,13 +3486,9 @@ void loader_destroy_icd_lib_list() {}
 // (on result == VK_SUCCESS) a list of icds that were discovered
 VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_tramp_list *icd_tramp_list,
                          bool *skipped_portability_drivers) {
-    char *file_str;
-    loader_api_version json_file_version = {0, 0, 0};
     struct loader_data_files manifest_files;
     VkResult res = VK_SUCCESS;
     bool lockedMutex = false;
-    cJSON *json = NULL;
-    uint32_t num_good_icds = 0;
 
     memset(&manifest_files, 0, sizeof(struct loader_data_files));
 
@@ -3404,259 +3496,60 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
     if (VK_SUCCESS != res) {
         goto out;
     }
+
     // Get a list of manifest files for ICDs
     res = loader_get_data_files(inst, LOADER_DATA_FILE_MANIFEST_DRIVER, NULL, &manifest_files);
     if (VK_SUCCESS != res || manifest_files.count == 0) {
         goto out;
     }
+
     loader_platform_thread_lock_mutex(&loader_json_lock);
     lockedMutex = true;
     for (uint32_t i = 0; i < manifest_files.count; i++) {
-        file_str = manifest_files.filename_list[i];
-        if (file_str == NULL) {
+        VkResult icd_res = VK_SUCCESS;
+        struct ICDManifestInfo icd;
+        memset(&icd, 0, sizeof(struct ICDManifestInfo));
+        icd_res = loader_parse_icd_manifest(inst, manifest_files.filename_list[i], &icd, skipped_portability_drivers);
+        if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_res) {
+            res = icd_res;
+            goto out;
+        } else if (VK_ERROR_INCOMPATIBLE_DRIVER == icd_res) {
             continue;
         }
 
-        VkResult temp_res = loader_get_json(inst, file_str, &json);
-        if (NULL == json || temp_res != VK_SUCCESS) {
-            if (NULL != json) {
-                cJSON_Delete(json);
-                json = NULL;
-            }
-            // If we haven't already found an ICD, copy this result to
-            // the returned result.
-            if (num_good_icds == 0) {
-                res = temp_res;
-            }
-            if (temp_res == VK_ERROR_OUT_OF_HOST_MEMORY) {
-                res = VK_ERROR_OUT_OF_HOST_MEMORY;
-                break;
-            } else {
-                continue;
-            }
-        }
-        res = temp_res;
-
-        cJSON *item, *itemICD;
-        item = cJSON_GetObjectItem(json, "file_format_version");
-        if (item == NULL) {
-            if (num_good_icds == 0) {
-                res = VK_ERROR_INITIALIZATION_FAILED;
-            }
-            loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                       "loader_icd_scan: ICD JSON %s does not have a \'file_format_version\' field. Skipping ICD JSON.", file_str);
-            cJSON_Delete(json);
-            json = NULL;
-            continue;
-        }
-
-        char *file_vers = cJSON_Print(item);
-        if (NULL == file_vers) {
-            // Only reason the print can fail is if there was an allocation issue
-            if (num_good_icds == 0) {
-                res = VK_ERROR_OUT_OF_HOST_MEMORY;
-            }
-            loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                       "loader_icd_scan: Failed retrieving ICD JSON %s \'file_format_version\' field.  Skipping ICD JSON",
-                       file_str);
-            cJSON_Delete(json);
-            json = NULL;
-            continue;
-        }
-        loader_log(inst, VULKAN_LOADER_DRIVER_BIT, 0, "Found ICD manifest file %s, version %s", file_str, file_vers);
-
-        // Get the version of the driver manifest
-        json_file_version = loader_make_full_version(loader_parse_version_string(file_vers));
-
-        // Loader only knows versions 1.0.0 and 1.0.1, anything above it is unknown
-        if (loader_check_version_meets_required(loader_combine_version(1, 0, 2), json_file_version)) {
-            loader_log(inst, VULKAN_LOADER_INFO_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                       "loader_icd_scan: %s has unknown icd manifest file version %d.%d.%d. May cause errors.", file_str,
-                       json_file_version.major, json_file_version.minor, json_file_version.patch);
-        }
-        loader_instance_heap_free(inst, file_vers);
-
-        itemICD = cJSON_GetObjectItem(json, "ICD");
-        if (itemICD != NULL) {
-            item = cJSON_GetObjectItem(itemICD, "library_path");
-            if (item != NULL) {
-                char *temp = cJSON_Print(item);
-                if (!temp || strlen(temp) == 0) {
-                    if (num_good_icds == 0) {
-                        res = VK_ERROR_OUT_OF_HOST_MEMORY;
-                    }
+        enum loader_layer_library_status lib_status;
+        icd_res = loader_scanned_icd_add(inst, icd_tramp_list, icd.full_library_path, icd.version, &lib_status);
+        if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_res) {
+            res = icd_res;
+            goto out;
+        } else if (VK_ERROR_INCOMPATIBLE_DRIVER == icd_res) {
+            switch (lib_status) {
+                case LOADER_LAYER_LIB_NOT_LOADED:
+                case LOADER_LAYER_LIB_ERROR_FAILED_TO_LOAD:
+                    loader_log(inst, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
+                               "loader_icd_scan: Failed loading library associated with ICD JSON %s. Ignoring this JSON",
+                               icd.full_library_path);
+                    break;
+                case LOADER_LAYER_LIB_ERROR_WRONG_BIT_TYPE: {
+                    loader_log(inst, VULKAN_LOADER_DRIVER_BIT, 0, "Requested layer %s was wrong bit-type. Ignoring this JSON",
+                               icd.full_library_path);
+                    break;
+                }
+                case LOADER_LAYER_LIB_SUCCESS_LOADED:
+                    // Shouldn't be able to reach this but if it is, best to report a debug
                     loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                               "loader_icd_scan: Failed retrieving ICD JSON %s \'library_path\' field.  Skipping ICD JSON.",
-                               file_str);
-                    loader_instance_heap_free(inst, temp);
-                    cJSON_Delete(json);
-                    json = NULL;
-                    continue;
-                }
-                // strip out extra quotes
-                temp[strlen(temp) - 1] = '\0';
-                char *library_path = loader_stack_alloc(strlen(temp) + 1);
-                if (NULL == library_path) {
-                    loader_log(
-                        inst, VULKAN_LOADER_ERROR_BIT, 0,
-                        "loader_icd_scan: Failed to allocate space for ICD JSON %s \'library_path\' value.  Skipping ICD JSON.",
-                        file_str);
-                    res = VK_ERROR_OUT_OF_HOST_MEMORY;
-                    loader_instance_heap_free(inst, temp);
-                    cJSON_Delete(json);
-                    json = NULL;
-                    goto out;
-                }
-                strcpy(library_path, &temp[1]);
-                loader_instance_heap_free(inst, temp);
-                if (strlen(library_path) == 0) {
-                    loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                               "loader_icd_scan: ICD JSON %s \'library_path\' field is empty.  Skipping ICD JSON.", file_str);
-                    cJSON_Delete(json);
-                    json = NULL;
-                    continue;
-                }
-                char fullpath[MAX_STRING_SIZE];
-                // Print out the paths being searched if debugging is enabled
-                loader_log(inst, VULKAN_LOADER_DEBUG_BIT, 0, "Searching for ICD drivers named %s", library_path);
-                if (loader_platform_is_path(library_path)) {
-                    // a relative or absolute path
-                    char *name_copy = loader_stack_alloc(strlen(file_str) + 1);
-                    char *rel_base;
-                    strcpy(name_copy, file_str);
-                    rel_base = loader_platform_dirname(name_copy);
-                    loader_expand_path(library_path, rel_base, sizeof(fullpath), fullpath);
-                } else {
-// a filename which is assumed in a system directory
-#if defined(DEFAULT_VK_DRIVERS_PATH)
-                    loader_get_fullpath(library_path, DEFAULT_VK_DRIVERS_PATH, sizeof(fullpath), fullpath);
-#else
-                    loader_get_fullpath(library_path, "", sizeof(fullpath), fullpath);
-#endif
-                }
-
-                uint32_t vers = 0;
-                item = cJSON_GetObjectItem(itemICD, "api_version");
-                if (item != NULL) {
-                    temp = cJSON_Print(item);
-                    if (NULL == temp) {
-                        loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                                   "loader_icd_scan: Failed retrieving ICD JSON %s \'api_version\' field.  Skipping ICD JSON.",
-                                   file_str);
-
-                        // Only reason the print can fail is if there was an
-                        // allocation issue
-                        if (num_good_icds == 0) {
-                            res = VK_ERROR_OUT_OF_HOST_MEMORY;
-                        }
-
-                        loader_instance_heap_free(inst, temp);
-                        cJSON_Delete(json);
-                        json = NULL;
-                        continue;
-                    }
-                    vers = loader_parse_version_string(temp);
-                    loader_instance_heap_free(inst, temp);
-                } else {
-                    loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                               "loader_icd_scan: ICD JSON %s does not have an \'api_version\' field.", file_str);
-                }
-                if (VK_API_VERSION_VARIANT(vers) != 0) {
-                    loader_log(
-                        inst, VULKAN_LOADER_INFO_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                        "loader_icd_scan: Driver's ICD JSON %s \'api_version\' field contains a non-zero variant value of %d. "
-                        " Skipping ICD JSON.",
-                        file_str, VK_API_VERSION_VARIANT(vers));
-                    cJSON_Delete(json);
-                    json = NULL;
-                    continue;
-                }
-                // Skip over ICD's which contain a true "is_portability_driver" value whenever the application doesn't enable
-                // portability enumeration.
-                item = cJSON_GetObjectItem(itemICD, "is_portability_driver");
-                if (item != NULL && item->type == cJSON_True && inst && !inst->portability_enumeration_enabled) {
-                    if (skipped_portability_drivers) *skipped_portability_drivers = true;
-                    cJSON_Delete(json);
-                    json = NULL;
-                    continue;
-                }
-
-                item = cJSON_GetObjectItem(itemICD, "library_arch");
-                if (item != NULL) {
-                    temp = cJSON_Print(item);
-                    if (NULL != temp) {
-                        // cJSON includes the quotes by default, so we need to look for those here
-                        if ((strncmp(temp, "\"32\"", 4) == 0 && sizeof(void *) != 4) ||
-                            (strncmp(temp, "\"64\"", 4) == 0 && sizeof(void *) != 8)) {
-                            loader_log(inst, VULKAN_LOADER_INFO_BIT, 0,
-                                       "loader_icd_scan: Driver library architecture doesn't match the current running "
-                                       "architecture, skipping this driver");
-                            loader_instance_heap_free(inst, temp);
-                            cJSON_Delete(json);
-                            json = NULL;
-                            continue;
-                        }
-                    }
-                    loader_instance_heap_free(inst, temp);
-                }
-
-                VkResult icd_add_res = VK_SUCCESS;
-                enum loader_layer_library_status lib_status;
-                icd_add_res = loader_scanned_icd_add(inst, icd_tramp_list, fullpath, vers, &lib_status);
-                if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_add_res) {
-                    res = icd_add_res;
-                    goto out;
-                } else if (VK_SUCCESS != icd_add_res) {
-                    switch (lib_status) {
-                        case LOADER_LAYER_LIB_NOT_LOADED:
-                        case LOADER_LAYER_LIB_ERROR_FAILED_TO_LOAD:
-                            loader_log(inst, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                                       "loader_icd_scan: Failed loading library associated with ICD JSON %s.Ignoring this JSON",
-                                       fullpath);
-                            break;
-                        case LOADER_LAYER_LIB_ERROR_WRONG_BIT_TYPE: {
-                            loader_log(inst, VULKAN_LOADER_DRIVER_BIT, 0,
-                                       "Requested layer %s was wrong bit-type. Ignoring this JSON", fullpath);
-                            break;
-                        }
-                        case LOADER_LAYER_LIB_SUCCESS_LOADED:
-                            // Shouldn't be able to reach this but if it is, best to report a debug
-                            loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                                       "Shouldn't reach this. A valid version of requested ICD %s was loaded but something bad "
-                                       "happened afterwards.",
-                                       fullpath);
-                            break;
-                    }
-                    cJSON_Delete(json);
-                    json = NULL;
-                    continue;
-                }
-                num_good_icds++;
-            } else {
-                loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                           "loader_icd_scan: Failed to find \'library_path\' object in ICD JSON file %s.  Skipping ICD JSON.",
-                           file_str);
+                               "Shouldn't reach this. A valid version of requested ICD %s was loaded but something bad "
+                               "happened afterwards.",
+                               icd.full_library_path);
+                    break;
             }
-        } else {
-            loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
-                       "loader_icd_scan: Can not find \'ICD\' object in ICD JSON file %s.  Skipping ICD JSON", file_str);
         }
-
-        cJSON_Delete(json);
-        json = NULL;
     }
 
 out:
-
-    if (NULL != json) {
-        cJSON_Delete(json);
-    }
-
     if (NULL != manifest_files.filename_list) {
         for (uint32_t i = 0; i < manifest_files.count; i++) {
-            if (NULL != manifest_files.filename_list[i]) {
-                loader_instance_heap_free(inst, manifest_files.filename_list[i]);
-            }
+            loader_instance_heap_free(inst, manifest_files.filename_list[i]);
         }
         loader_instance_heap_free(inst, manifest_files.filename_list);
     }
@@ -3788,14 +3681,10 @@ void loader_scan_for_layers(struct loader_instance *inst, struct loader_layer_li
 
 out:
 
-    if (NULL != override_paths) {
-        loader_instance_heap_free(inst, override_paths);
-    }
+    loader_instance_heap_free(inst, override_paths);
     if (NULL != manifest_files.filename_list) {
         for (uint32_t i = 0; i < manifest_files.count; i++) {
-            if (NULL != manifest_files.filename_list[i]) {
-                loader_instance_heap_free(inst, manifest_files.filename_list[i]);
-            }
+            loader_instance_heap_free(inst, manifest_files.filename_list[i]);
         }
         loader_instance_heap_free(inst, manifest_files.filename_list);
     }
@@ -3933,17 +3822,11 @@ void loader_scan_for_implicit_layers(struct loader_instance *inst, struct loader
 
 out:
 
-    if (NULL != override_paths) {
-        loader_instance_heap_free(inst, override_paths);
-    }
+    loader_instance_heap_free(inst, override_paths);
     for (uint32_t i = 0; i < manifest_files.count; i++) {
-        if (NULL != manifest_files.filename_list[i]) {
-            loader_instance_heap_free(inst, manifest_files.filename_list[i]);
-        }
+        loader_instance_heap_free(inst, manifest_files.filename_list[i]);
     }
-    if (NULL != manifest_files.filename_list) {
-        loader_instance_heap_free(inst, manifest_files.filename_list);
-    }
+    loader_instance_heap_free(inst, manifest_files.filename_list);
 
     if (have_json_lock) {
         loader_platform_thread_unlock_mutex(&loader_json_lock);
@@ -4213,11 +4096,11 @@ VkResult loader_enable_instance_layers(struct loader_instance *inst, const VkIns
         struct loader_layer_properties *prop = inst->expanded_activated_layer_list.list + i;
         loader_api_version prop_spec_version = loader_make_version(prop->info.specVersion);
         if (!loader_check_version_meets_required(inst->app_api_version, prop_spec_version)) {
-            loader_log(
-                inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_LAYER_BIT, 0,
-                "loader_add_to_layer_list: Explicit layer %s is using an old API version %u.%u versus application requested %u.%u",
-                prop->info.layerName, prop_spec_version.major, prop_spec_version.minor, inst->app_api_version.major,
-                inst->app_api_version.minor);
+            loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_LAYER_BIT, 0,
+                       "Layer %s uses API version %u.%u which is older than the application specified "
+                       "API version of %u.%u. May cause issues.",
+                       prop->info.layerName, prop_spec_version.major, prop_spec_version.minor, inst->app_api_version.major,
+                       inst->app_api_version.minor);
         }
     }
 
@@ -5307,6 +5190,21 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateInstance(const VkInstanceCreateI
                                icd_term->scanned_icd->lib_name);
                 }
             }
+        }
+
+        // Remove the portability enumeration flag bit if the ICD doesn't support the extension
+        if ((pCreateInfo->flags & VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR) == 1) {
+            bool supports_portability_enumeration = false;
+            for (uint32_t j = 0; j < icd_create_info.enabledExtensionCount; j++) {
+                if (strcmp(filtered_extension_names[j], VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) {
+                    supports_portability_enumeration = true;
+                    break;
+                }
+            }
+            // If the icd supports the extension, use the flags as given, otherwise remove the portability bit
+            icd_create_info.flags = supports_portability_enumeration
+                                        ? pCreateInfo->flags
+                                        : pCreateInfo->flags & (~VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR);
         }
 
         // Create an instance, substituting the version to 1.0 if necessary
