@@ -1,3 +1,63 @@
+vulkan-loader (1.3.231.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.225
+
+  [ Brad Smith ]
+  * loader: Add OpenBSD support
+
+  [ Charles Giessen ]
+  * Dont pass portability bit to ICDs that dont expect it
+
+  [ Brad Smith ]
+  * loader: Add stub function for OpenBSD executable path
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.226
+
+  [ Brad Smith ]
+  * tests: Further fixes to be able to build on OpenBSD
+
+  [ Charles Giessen ]
+  * Rename GIPA, GPDPA, & GDPA terminators
+  * Enable layer interception of unknown functions
+  * Refactor unknown function tests
+
+  [ xantares ]
+  * appmodel.h is not yet available on mingw stable
+
+  [ Charles Giessen ]
+  * Remove redundant checks for NULL
+  * Refactor loader_icd_scan()
+  * Remove unneeded exports in test_wrap_layers
+
+  [ Brad Smith ]
+  * loader: Fix CMake detection of OpenBSD/FreeBSD / amd64
+  * loader: Only use alloca.h if it exists otherwise fallback to stdlib.h
+
+  [ Steve Lhomme ]
+  * Generate the same DLL name with mingw-w64 as with MSVC
+  * Fix the pkg-config import library name with mingw-w64
+  * fix typo in CMakeLists
+
+  [ Brad Smith ]
+  * build: Also include XCB header path
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.227
+
+  [ Charles Giessen ]
+  * Allow implicit layers for all API versions
+  * Make old layer with new app API version warning clearer
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.228
+  * build: Update to header 1.3.229
+  * build: Update to header 1.3.230
+  * build: Update to header 1.3.231
+
+ -- john <john@odin>  Tue, 18 Oct 2022 11:26:19 -0600
+
 vulkan-loader (1.3.224.0~rc2-1lunarg20.04-1) focal; urgency=medium
 
   [ John Zupin ]
