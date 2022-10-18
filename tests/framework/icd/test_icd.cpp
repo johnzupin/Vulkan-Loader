@@ -194,6 +194,8 @@ VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateInstance(const VkInstanceCreateInfo*
     // VK_SUCCESS
     *pInstance = icd.instance_handle.handle;
 
+    icd.passed_in_instance_create_flags = pCreateInfo->flags;
+
     return VK_SUCCESS;
 }
 
@@ -1239,9 +1241,11 @@ PFN_vkVoidFunction get_physical_device_func(VkInstance instance, const char* pNa
             return to_vkVoidFunction(test_vkGetPhysicalDeviceToolPropertiesEXT);
     }
 
-    for (auto& func : icd.custom_physical_device_functions) {
-        if (func.name == pName) {
-            return to_vkVoidFunction(func.function);
+    for (auto& phys_dev : icd.physical_devices) {
+        for (auto& func : phys_dev.custom_physical_device_functions) {
+            if (func.name == pName) {
+                return to_vkVoidFunction(func.function);
+            }
         }
     }
     return nullptr;

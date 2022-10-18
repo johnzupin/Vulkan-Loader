@@ -82,11 +82,15 @@ bool loader_check_icds_for_dev_ext_address(struct loader_instance *inst, const c
     return false;
 }
 
-bool loader_check_layer_list_for_dev_ext_address(const struct loader_layer_list *const layers, const char *funcName) {
+// Look in the layers list of device extensions, which contain names of entry points. If funcName is present, return true
+// If not, call down the first layer's vkGetInstanceProcAddr to determine if any layers support the function
+bool loader_check_layer_list_for_dev_ext_address(struct loader_instance *inst, const char *funcName) {
+    struct loader_layer_properties *layer_prop_list = inst->expanded_activated_layer_list.list;
+
     // Iterate over the layers.
-    for (uint32_t layer = 0; layer < layers->count; ++layer) {
+    for (uint32_t layer = 0; layer < inst->expanded_activated_layer_list.count; ++layer) {
         // Iterate over the extensions.
-        const struct loader_device_extension_list *const extensions = &(layers->list[layer].device_extension_list);
+        const struct loader_device_extension_list *const extensions = &(layer_prop_list[layer].device_extension_list);
         for (uint32_t extension = 0; extension < extensions->count; ++extension) {
             // Iterate over the entry points.
             const struct loader_dev_ext_props *const property = &(extensions->list[extension]);
@@ -95,6 +99,14 @@ bool loader_check_layer_list_for_dev_ext_address(const struct loader_layer_list 
                     return true;
                 }
             }
+        }
+    }
+    // If the function pointer doesn't appear in the layer manifest for intercepted device functions, look down the
+    // vkGetInstanceProcAddr chain
+    if (inst->expanded_activated_layer_list.count > 0) {
+        const struct loader_layer_functions *const functions = &(layer_prop_list[0].functions);
+        if (NULL != functions->get_instance_proc_addr) {
+            return NULL != functions->get_instance_proc_addr((VkInstance)inst->instance, funcName);
         }
     }
 
@@ -135,7 +147,7 @@ void *loader_dev_ext_gpa_impl(struct loader_instance *inst, const char *funcName
 
     // Check if funcName is supported in either ICDs or a layer library
     if (!loader_check_icds_for_dev_ext_address(inst, funcName)) {
-        if (!is_tramp || !loader_check_layer_list_for_dev_ext_address(&inst->app_activated_layer_list, funcName)) {
+        if (!is_tramp || !loader_check_layer_list_for_dev_ext_address(inst, funcName)) {
             // if support found in layers continue on
             return NULL;
         }

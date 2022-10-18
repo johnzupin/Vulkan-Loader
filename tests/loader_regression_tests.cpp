@@ -1027,7 +1027,7 @@ TEST(TryLoadWrongBinaries, WrongICD) {
 #if _WIN32 || _WIN64
     ASSERT_TRUE(log.find("Failed to open dynamic library"));
 #endif
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #if defined(__x86_64__)
     ASSERT_TRUE(log.find("wrong ELF class: ELFCLASS32"));
 #else
@@ -1314,8 +1314,9 @@ TEST(TryLoadWrongBinaries, WrongArchDriver) {
     InstWrapper inst{env.vulkan_functions};
     FillDebugUtilsCreateDetails(inst.create_info, log);
     inst.CheckCreate(VK_ERROR_INCOMPATIBLE_DRIVER);
-    ASSERT_TRUE(log.find(
-        "loader_icd_scan: Driver library architecture doesn't match the current running architecture, skipping this driver"));
+    ASSERT_TRUE(
+        log.find("loader_parse_icd_manifest: Driver library architecture doesn't match the current running architecture, skipping "
+                 "this driver"));
 }
 
 TEST(TryLoadWrongBinaries, WrongArchLayer) {
@@ -2468,7 +2469,7 @@ TEST(CreateInstance, InstanceNullExtensionPtr) {
     ASSERT_EQ(env.vulkan_functions.vkCreateInstance(&info, VK_NULL_HANDLE, &inst), VK_ERROR_EXTENSION_NOT_PRESENT);
 }
 
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 // NOTE: Sort order only affects Linux
 TEST(SortedPhysicalDevices, DevicesSortEnabled10NoAppExt) {
     FrameworkEnvironment env{};
@@ -3280,7 +3281,7 @@ TEST(SortedPhysicalDevices, DeviceGroupsSortedDisabled) {
     remove_env_var("VK_LOADER_DISABLE_SELECT");
 }
 
-#endif  // __linux__ || __FreeBSD__
+#endif  // __linux__ || __FreeBSD__ || __OpenBSD__
 
 const char* portability_driver_warning =
     "vkCreateInstance: Found drivers that contain devices which support the portability subset, but the "
@@ -3420,6 +3421,36 @@ TEST(PortabilityICDConfiguration, PortabilityAndRegularICD) {
         DeviceWrapper dev_info_0{inst};
         dev_info_0.CheckCreate(phys_dev);
     }
+}
+
+// Check that the portability enumeration flag bit doesn't get passed down
+TEST(PortabilityICDConfiguration, PortabilityAndRegularICDCheckFlagsPassedIntoICD) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(ManifestICD{}.set_lib_path(TEST_ICD_PATH_VERSION_2)));
+    env.add_icd(TestICDDetails(ManifestICD{}.set_lib_path(TEST_ICD_PATH_VERSION_2).set_is_portability_driver(true)));
+
+    auto& driver0 = env.get_test_icd(0);
+    auto& driver1 = env.get_test_icd(1);
+
+    driver0.physical_devices.emplace_back("physical_device_0");
+    driver0.max_icd_interface_version = 1;
+
+    driver1.physical_devices.emplace_back("portability_physical_device_1");
+    driver1.add_instance_extension("VK_KHR_portability_enumeration");
+    driver1.max_icd_interface_version = 1;
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.add_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    inst.create_info.add_extension("VK_KHR_portability_enumeration");
+    inst.create_info.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR | 4;
+
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+    inst.CheckCreate();
+    ASSERT_FALSE(env.debug_log.find(portability_driver_warning));
+
+    ASSERT_EQ(static_cast<VkInstanceCreateFlags>(4), driver0.passed_in_instance_create_flags);
+    ASSERT_EQ(VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR | static_cast<VkInstanceCreateFlags>(4),
+              driver1.passed_in_instance_create_flags);
 }
 
 TEST(PortabilityICDConfiguration, PortabilityAndRegularICDPreInstanceFunctions) {

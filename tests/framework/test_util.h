@@ -66,7 +66,7 @@
 #include <direct.h>
 #include <windows.h>
 #include <strsafe.h>
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -109,7 +109,7 @@ void set_env_var(std::string const& name, std::string const& value);
 void remove_env_var(std::string const& name);
 std::string get_env_var(std::string const& name, bool report_failure = true);
 
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 void set_env_var(std::string const& name, std::string const& value);
 void remove_env_var(std::string const& name);
 std::string get_env_var(std::string const& name, bool report_failure = true);
@@ -141,7 +141,7 @@ struct path {
    private:
 #if defined(WIN32)
     static const char path_separator = '\\';
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
     static const char path_separator = '/';
 #endif
 
@@ -247,9 +247,9 @@ inline void copy_string_to_char_array(std::string const& src, char* dst, size_t 
 
 #if defined(WIN32)
 // Convert an UTF-16 wstring to an UTF-8 string
-std::string narrow(const std::wstring &utf16);
+std::string narrow(const std::wstring& utf16);
 // Convert an UTF-8 string to an UTF-16 wstring
-std::wstring widen(const std::string &utf8);
+std::wstring widen(const std::string& utf8);
 #endif
 
 #if defined(WIN32)
@@ -282,7 +282,7 @@ inline char* loader_platform_get_proc_address_error(const char* name) {
     return errorMsg;
 }
 
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 
 typedef void* loader_platform_dl_handle;
 inline loader_platform_dl_handle loader_platform_open_library(const char* libPath) {
@@ -752,11 +752,11 @@ struct VulkanFunctions {
 
     VulkanFunctions();
 
-    FromVoidStarFunc load(VkInstance inst, const char* func_name) {
+    FromVoidStarFunc load(VkInstance inst, const char* func_name) const {
         return FromVoidStarFunc(vkGetInstanceProcAddr(inst, func_name));
     }
 
-    FromVoidStarFunc load(VkDevice device, const char* func_name) {
+    FromVoidStarFunc load(VkDevice device, const char* func_name) const {
         return FromVoidStarFunc(vkGetDeviceProcAddr(device, func_name));
     }
 };
@@ -844,8 +844,9 @@ inline bool operator!=(const VkExtensionProperties& a, const VkExtensionProperti
 
 struct VulkanFunction {
     std::string name;
-    void* function;
+    PFN_vkVoidFunction function;
 };
+
 template <typename T, size_t U>
 bool check_permutation(std::initializer_list<const char*> expected, std::array<T, U> const& returned) {
     if (expected.size() != returned.size()) return false;
@@ -936,7 +937,7 @@ static inline std::string test_platform_executable_path() {
 
     return buffer;
 }
-#elif defined(__Fuchsia__)
+#elif defined(__Fuchsia__) || defined(__OpenBSD__)
 static inline std::string test_platform_executable_path() { return {}; }
 #elif defined(__QNXNTO__)
 
