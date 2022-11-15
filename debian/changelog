@@ -1,3 +1,10 @@
+vulkan-loader (1.3.231.0~rc2-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Charles Giessen ]
+  * Handle invalid files & symlinks properly
+
+ -- john <john@odin>  Tue, 15 Nov 2022 14:40:34 -0700
+
 vulkan-loader (1.3.231.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ Mike Schuchardt ]
