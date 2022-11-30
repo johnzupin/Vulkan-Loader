@@ -37,7 +37,6 @@
  * LibraryWrapper - RAII wrapper for a library
  * DispatchableHandle - RAII wrapper for vulkan dispatchable handle objects
  * ostream overload for VkResult - prettifies googletest output
- * VulkanFunctions - loads vulkan functions for tests to use
  * Instance & Device create info helpers
  * operator == overloads for many vulkan structs - more concise tests
  */
@@ -646,143 +645,6 @@ struct MockQueueFamilyProperties {
     VkQueueFamilyProperties get() const noexcept { return properties; }
 };
 
-struct VulkanFunctions {
-    LibraryWrapper loader;
-
-    // Pre-Instance
-    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
-    PFN_vkEnumerateInstanceExtensionProperties vkEnumerateInstanceExtensionProperties = nullptr;
-    PFN_vkEnumerateInstanceLayerProperties vkEnumerateInstanceLayerProperties = nullptr;
-    PFN_vkEnumerateInstanceVersion vkEnumerateInstanceVersion = nullptr;
-    PFN_vkCreateInstance vkCreateInstance = nullptr;
-
-    // Instance
-    PFN_vkDestroyInstance vkDestroyInstance = nullptr;
-    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices = nullptr;
-    PFN_vkEnumeratePhysicalDeviceGroups vkEnumeratePhysicalDeviceGroups = nullptr;
-    PFN_vkGetPhysicalDeviceFeatures vkGetPhysicalDeviceFeatures = nullptr;
-    PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2 = nullptr;
-    PFN_vkGetPhysicalDeviceFormatProperties vkGetPhysicalDeviceFormatProperties = nullptr;
-    PFN_vkGetPhysicalDeviceFormatProperties2 vkGetPhysicalDeviceFormatProperties2 = nullptr;
-    PFN_vkGetPhysicalDeviceImageFormatProperties vkGetPhysicalDeviceImageFormatProperties = nullptr;
-    PFN_vkGetPhysicalDeviceImageFormatProperties2 vkGetPhysicalDeviceImageFormatProperties2 = nullptr;
-    PFN_vkGetPhysicalDeviceSparseImageFormatProperties vkGetPhysicalDeviceSparseImageFormatProperties = nullptr;
-    PFN_vkGetPhysicalDeviceSparseImageFormatProperties2 vkGetPhysicalDeviceSparseImageFormatProperties2 = nullptr;
-    PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties = nullptr;
-    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2 = nullptr;
-    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
-    PFN_vkGetPhysicalDeviceQueueFamilyProperties2 vkGetPhysicalDeviceQueueFamilyProperties2 = nullptr;
-    PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties = nullptr;
-    PFN_vkGetPhysicalDeviceMemoryProperties2 vkGetPhysicalDeviceMemoryProperties2 = nullptr;
-    PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR = nullptr;
-    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR = nullptr;
-    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR = nullptr;
-    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
-    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties = nullptr;
-    PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties = nullptr;
-    PFN_vkGetPhysicalDeviceExternalBufferProperties vkGetPhysicalDeviceExternalBufferProperties = nullptr;
-    PFN_vkGetPhysicalDeviceExternalFenceProperties vkGetPhysicalDeviceExternalFenceProperties = nullptr;
-    PFN_vkGetPhysicalDeviceExternalSemaphoreProperties vkGetPhysicalDeviceExternalSemaphoreProperties = nullptr;
-
-    PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
-    PFN_vkCreateDevice vkCreateDevice = nullptr;
-    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = nullptr;
-    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = nullptr;
-
-    // WSI
-    PFN_vkCreateHeadlessSurfaceEXT vkCreateHeadlessSurfaceEXT = nullptr;
-    PFN_vkCreateDisplayPlaneSurfaceKHR vkCreateDisplayPlaneSurfaceKHR = nullptr;
-    PFN_vkGetPhysicalDeviceDisplayPropertiesKHR vkGetPhysicalDeviceDisplayPropertiesKHR = nullptr;
-    PFN_vkGetPhysicalDeviceDisplayPlanePropertiesKHR vkGetPhysicalDeviceDisplayPlanePropertiesKHR = nullptr;
-    PFN_vkGetDisplayPlaneSupportedDisplaysKHR vkGetDisplayPlaneSupportedDisplaysKHR = nullptr;
-    PFN_vkGetDisplayModePropertiesKHR vkGetDisplayModePropertiesKHR = nullptr;
-    PFN_vkCreateDisplayModeKHR vkCreateDisplayModeKHR = nullptr;
-    PFN_vkGetDisplayPlaneCapabilitiesKHR vkGetDisplayPlaneCapabilitiesKHR = nullptr;
-    PFN_vkGetPhysicalDevicePresentRectanglesKHR vkGetPhysicalDevicePresentRectanglesKHR = nullptr;
-    PFN_vkGetPhysicalDeviceDisplayProperties2KHR vkGetPhysicalDeviceDisplayProperties2KHR = nullptr;
-    PFN_vkGetPhysicalDeviceDisplayPlaneProperties2KHR vkGetPhysicalDeviceDisplayPlaneProperties2KHR = nullptr;
-    PFN_vkGetDisplayModeProperties2KHR vkGetDisplayModeProperties2KHR = nullptr;
-    PFN_vkGetDisplayPlaneCapabilities2KHR vkGetDisplayPlaneCapabilities2KHR = nullptr;
-    PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR vkGetPhysicalDeviceSurfaceCapabilities2KHR = nullptr;
-    PFN_vkGetPhysicalDeviceSurfaceFormats2KHR vkGetPhysicalDeviceSurfaceFormats2KHR = nullptr;
-
-#ifdef VK_USE_PLATFORM_ANDROID_KHR
-    PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR = nullptr;
-#endif  // VK_USE_PLATFORM_ANDROID_KHR
-#ifdef VK_USE_PLATFORM_DIRECTFB_EXT
-    PFN_vkCreateDirectFBSurfaceEXT vkCreateDirectFBSurfaceEXT = nullptr;
-    PFN_vkGetPhysicalDeviceDirectFBPresentationSupportEXT vkGetPhysicalDeviceDirectFBPresentationSupportEXT = nullptr;
-#endif  // VK_USE_PLATFORM_DIRECTFB_EXT
-#ifdef VK_USE_PLATFORM_FUCHSIA
-    PFN_vkCreateImagePipeSurfaceFUCHSIA vkCreateImagePipeSurfaceFUCHSIA = nullptr;
-#endif  // VK_USE_PLATFORM_FUCHSIA
-#ifdef VK_USE_PLATFORM_GGP
-    PFN_vkCreateStreamDescriptorSurfaceGGP vkCreateStreamDescriptorSurfaceGGP = nullptr;
-#endif  // VK_USE_PLATFORM_GGP
-#ifdef VK_USE_PLATFORM_IOS_MVK
-    PFN_vkCreateIOSSurfaceMVK vkCreateIOSSurfaceMVK = nullptr;
-#endif  // VK_USE_PLATFORM_IOS_MVK
-#ifdef VK_USE_PLATFORM_MACOS_MVK
-    PFN_vkCreateMacOSSurfaceMVK vkCreateMacOSSurfaceMVK = nullptr;
-#endif  // VK_USE_PLATFORM_MACOS_MVK
-#ifdef VK_USE_PLATFORM_METAL_EXT
-    PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT = nullptr;
-#endif  // VK_USE_PLATFORM_METAL_EXT
-#ifdef VK_USE_PLATFORM_SCREEN_QNX
-    PFN_vkCreateScreenSurfaceQNX vkCreateScreenSurfaceQNX = nullptr;
-    PFN_vkGetPhysicalDeviceScreenPresentationSupportQNX vkGetPhysicalDeviceScreenPresentationSupportQNX = nullptr;
-#endif  // VK_USE_PLATFORM_SCREEN_QNX
-#ifdef VK_USE_PLATFORM_WAYLAND_KHR
-    PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR = nullptr;
-    PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR = nullptr;
-#endif  // VK_USE_PLATFORM_WAYLAND_KHR
-#ifdef VK_USE_PLATFORM_XCB_KHR
-    PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR = nullptr;
-    PFN_vkGetPhysicalDeviceXcbPresentationSupportKHR vkGetPhysicalDeviceXcbPresentationSupportKHR = nullptr;
-#endif  // VK_USE_PLATFORM_XCB_KHR
-#ifdef VK_USE_PLATFORM_XLIB_KHR
-    PFN_vkCreateXlibSurfaceKHR vkCreateXlibSurfaceKHR = nullptr;
-    PFN_vkGetPhysicalDeviceXlibPresentationSupportKHR vkGetPhysicalDeviceXlibPresentationSupportKHR = nullptr;
-#endif  // VK_USE_PLATFORM_XLIB_KHR
-#ifdef VK_USE_PLATFORM_WIN32_KHR
-    PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = nullptr;
-    PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR vkGetPhysicalDeviceWin32PresentationSupportKHR = nullptr;
-#endif  // VK_USE_PLATFORM_WIN32_KHR
-    PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
-
-    // device functions
-    PFN_vkDestroyDevice vkDestroyDevice = nullptr;
-    PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
-
-    VulkanFunctions();
-
-    FromVoidStarFunc load(VkInstance inst, const char* func_name) const {
-        return FromVoidStarFunc(vkGetInstanceProcAddr(inst, func_name));
-    }
-
-    FromVoidStarFunc load(VkDevice device, const char* func_name) const {
-        return FromVoidStarFunc(vkGetDeviceProcAddr(device, func_name));
-    }
-};
-
-struct DeviceFunctions {
-    PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
-    PFN_vkDestroyDevice vkDestroyDevice = nullptr;
-    PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
-    PFN_vkCreateCommandPool vkCreateCommandPool = nullptr;
-    PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers = nullptr;
-    PFN_vkDestroyCommandPool vkDestroyCommandPool = nullptr;
-    PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR = nullptr;
-    PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR = nullptr;
-
-    DeviceFunctions() = default;
-    DeviceFunctions(const VulkanFunctions& vulkan_functions, VkDevice device);
-
-    FromVoidStarFunc load(VkDevice device, const char* func_name) const {
-        return FromVoidStarFunc(vkGetDeviceProcAddr(device, func_name));
-    }
-};
-
 struct InstanceCreateInfo {
     BUILDER_VALUE(InstanceCreateInfo, VkInstanceCreateInfo, instance_info, {})
     BUILDER_VALUE(InstanceCreateInfo, VkApplicationInfo, application_info, {})
@@ -805,14 +667,19 @@ struct InstanceCreateInfo {
 };
 
 struct DeviceQueueCreateInfo {
+    DeviceQueueCreateInfo();
+    DeviceQueueCreateInfo(const VkDeviceQueueCreateInfo* create_info);
+
     BUILDER_VALUE(DeviceQueueCreateInfo, VkDeviceQueueCreateInfo, queue_create_info, {})
     BUILDER_VECTOR(DeviceQueueCreateInfo, float, priorities, priority)
 
-    DeviceQueueCreateInfo();
     VkDeviceQueueCreateInfo get() noexcept;
 };
 
 struct DeviceCreateInfo {
+    DeviceCreateInfo() = default;
+    DeviceCreateInfo(const VkDeviceCreateInfo* create_info);
+
     BUILDER_VALUE(DeviceCreateInfo, VkDeviceCreateInfo, dev, {})
     BUILDER_VECTOR(DeviceCreateInfo, const char*, enabled_extensions, extension)
     BUILDER_VECTOR(DeviceCreateInfo, const char*, enabled_layers, layer)
@@ -855,29 +722,19 @@ template <typename T, size_t U>
 bool check_permutation(std::initializer_list<const char*> expected, std::array<T, U> const& returned) {
     if (expected.size() != returned.size()) return false;
     for (uint32_t i = 0; i < expected.size(); i++) {
-        bool found = false;
-        for (auto& elem : returned) {
-            if (string_eq(*(expected.begin() + i), elem.layerName)) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) return false;
+        auto found = std::find_if(std::begin(returned), std::end(returned),
+                                  [&](T elem) { return string_eq(*(expected.begin() + i), elem.layerName); });
+        if (found == std::end(returned)) return false;
     }
     return true;
 }
-template <typename T, size_t U>
+template <typename T>
 bool check_permutation(std::initializer_list<const char*> expected, std::vector<T> const& returned) {
     if (expected.size() != returned.size()) return false;
     for (uint32_t i = 0; i < expected.size(); i++) {
-        bool found = false;
-        for (auto& elem : returned) {
-            if (string_eq(*(expected.begin() + i), elem.layerName)) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) return false;
+        auto found = std::find_if(std::begin(returned), std::end(returned),
+                                  [&](T elem) { return string_eq(*(expected.begin() + i), elem.layerName); });
+        if (found == std::end(returned)) return false;
     }
     return true;
 }

@@ -117,6 +117,147 @@ void handle_assert_equal(size_t count, T left[], T right[]) {
     }
 }
 
+// VulkanFunctions - loads vulkan functions for tests to use
+
+struct VulkanFunctions {
+#if !defined(BUILD_STATIC_LOADER)
+    LibraryWrapper loader;
+#endif
+    // Pre-Instance
+    PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
+    PFN_vkEnumerateInstanceExtensionProperties vkEnumerateInstanceExtensionProperties = nullptr;
+    PFN_vkEnumerateInstanceLayerProperties vkEnumerateInstanceLayerProperties = nullptr;
+    PFN_vkEnumerateInstanceVersion vkEnumerateInstanceVersion = nullptr;
+    PFN_vkCreateInstance vkCreateInstance = nullptr;
+
+    // Instance
+    PFN_vkDestroyInstance vkDestroyInstance = nullptr;
+    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices = nullptr;
+    PFN_vkEnumeratePhysicalDeviceGroups vkEnumeratePhysicalDeviceGroups = nullptr;
+    PFN_vkGetPhysicalDeviceFeatures vkGetPhysicalDeviceFeatures = nullptr;
+    PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2 = nullptr;
+    PFN_vkGetPhysicalDeviceFormatProperties vkGetPhysicalDeviceFormatProperties = nullptr;
+    PFN_vkGetPhysicalDeviceFormatProperties2 vkGetPhysicalDeviceFormatProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceImageFormatProperties vkGetPhysicalDeviceImageFormatProperties = nullptr;
+    PFN_vkGetPhysicalDeviceImageFormatProperties2 vkGetPhysicalDeviceImageFormatProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceSparseImageFormatProperties vkGetPhysicalDeviceSparseImageFormatProperties = nullptr;
+    PFN_vkGetPhysicalDeviceSparseImageFormatProperties2 vkGetPhysicalDeviceSparseImageFormatProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties = nullptr;
+    PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties2 vkGetPhysicalDeviceQueueFamilyProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties = nullptr;
+    PFN_vkGetPhysicalDeviceMemoryProperties2 vkGetPhysicalDeviceMemoryProperties2 = nullptr;
+    PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR = nullptr;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR = nullptr;
+    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR = nullptr;
+    PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
+    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties = nullptr;
+    PFN_vkEnumerateDeviceLayerProperties vkEnumerateDeviceLayerProperties = nullptr;
+    PFN_vkGetPhysicalDeviceExternalBufferProperties vkGetPhysicalDeviceExternalBufferProperties = nullptr;
+    PFN_vkGetPhysicalDeviceExternalFenceProperties vkGetPhysicalDeviceExternalFenceProperties = nullptr;
+    PFN_vkGetPhysicalDeviceExternalSemaphoreProperties vkGetPhysicalDeviceExternalSemaphoreProperties = nullptr;
+
+    PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
+    PFN_vkCreateDevice vkCreateDevice = nullptr;
+    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = nullptr;
+    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = nullptr;
+
+    // WSI
+    PFN_vkCreateHeadlessSurfaceEXT vkCreateHeadlessSurfaceEXT = nullptr;
+    PFN_vkCreateDisplayPlaneSurfaceKHR vkCreateDisplayPlaneSurfaceKHR = nullptr;
+    PFN_vkGetPhysicalDeviceDisplayPropertiesKHR vkGetPhysicalDeviceDisplayPropertiesKHR = nullptr;
+    PFN_vkGetPhysicalDeviceDisplayPlanePropertiesKHR vkGetPhysicalDeviceDisplayPlanePropertiesKHR = nullptr;
+    PFN_vkGetDisplayPlaneSupportedDisplaysKHR vkGetDisplayPlaneSupportedDisplaysKHR = nullptr;
+    PFN_vkGetDisplayModePropertiesKHR vkGetDisplayModePropertiesKHR = nullptr;
+    PFN_vkCreateDisplayModeKHR vkCreateDisplayModeKHR = nullptr;
+    PFN_vkGetDisplayPlaneCapabilitiesKHR vkGetDisplayPlaneCapabilitiesKHR = nullptr;
+    PFN_vkGetPhysicalDevicePresentRectanglesKHR vkGetPhysicalDevicePresentRectanglesKHR = nullptr;
+    PFN_vkGetPhysicalDeviceDisplayProperties2KHR vkGetPhysicalDeviceDisplayProperties2KHR = nullptr;
+    PFN_vkGetPhysicalDeviceDisplayPlaneProperties2KHR vkGetPhysicalDeviceDisplayPlaneProperties2KHR = nullptr;
+    PFN_vkGetDisplayModeProperties2KHR vkGetDisplayModeProperties2KHR = nullptr;
+    PFN_vkGetDisplayPlaneCapabilities2KHR vkGetDisplayPlaneCapabilities2KHR = nullptr;
+    PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR vkGetPhysicalDeviceSurfaceCapabilities2KHR = nullptr;
+    PFN_vkGetPhysicalDeviceSurfaceFormats2KHR vkGetPhysicalDeviceSurfaceFormats2KHR = nullptr;
+
+#ifdef VK_USE_PLATFORM_ANDROID_KHR
+    PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR = nullptr;
+#endif  // VK_USE_PLATFORM_ANDROID_KHR
+#ifdef VK_USE_PLATFORM_DIRECTFB_EXT
+    PFN_vkCreateDirectFBSurfaceEXT vkCreateDirectFBSurfaceEXT = nullptr;
+    PFN_vkGetPhysicalDeviceDirectFBPresentationSupportEXT vkGetPhysicalDeviceDirectFBPresentationSupportEXT = nullptr;
+#endif  // VK_USE_PLATFORM_DIRECTFB_EXT
+#ifdef VK_USE_PLATFORM_FUCHSIA
+    PFN_vkCreateImagePipeSurfaceFUCHSIA vkCreateImagePipeSurfaceFUCHSIA = nullptr;
+#endif  // VK_USE_PLATFORM_FUCHSIA
+#ifdef VK_USE_PLATFORM_GGP
+    PFN_vkCreateStreamDescriptorSurfaceGGP vkCreateStreamDescriptorSurfaceGGP = nullptr;
+#endif  // VK_USE_PLATFORM_GGP
+#ifdef VK_USE_PLATFORM_IOS_MVK
+    PFN_vkCreateIOSSurfaceMVK vkCreateIOSSurfaceMVK = nullptr;
+#endif  // VK_USE_PLATFORM_IOS_MVK
+#ifdef VK_USE_PLATFORM_MACOS_MVK
+    PFN_vkCreateMacOSSurfaceMVK vkCreateMacOSSurfaceMVK = nullptr;
+#endif  // VK_USE_PLATFORM_MACOS_MVK
+#ifdef VK_USE_PLATFORM_METAL_EXT
+    PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT = nullptr;
+#endif  // VK_USE_PLATFORM_METAL_EXT
+#ifdef VK_USE_PLATFORM_SCREEN_QNX
+    PFN_vkCreateScreenSurfaceQNX vkCreateScreenSurfaceQNX = nullptr;
+    PFN_vkGetPhysicalDeviceScreenPresentationSupportQNX vkGetPhysicalDeviceScreenPresentationSupportQNX = nullptr;
+#endif  // VK_USE_PLATFORM_SCREEN_QNX
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+    PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR = nullptr;
+    PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR vkGetPhysicalDeviceWaylandPresentationSupportKHR = nullptr;
+#endif  // VK_USE_PLATFORM_WAYLAND_KHR
+#ifdef VK_USE_PLATFORM_XCB_KHR
+    PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR = nullptr;
+    PFN_vkGetPhysicalDeviceXcbPresentationSupportKHR vkGetPhysicalDeviceXcbPresentationSupportKHR = nullptr;
+#endif  // VK_USE_PLATFORM_XCB_KHR
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+    PFN_vkCreateXlibSurfaceKHR vkCreateXlibSurfaceKHR = nullptr;
+    PFN_vkGetPhysicalDeviceXlibPresentationSupportKHR vkGetPhysicalDeviceXlibPresentationSupportKHR = nullptr;
+#endif  // VK_USE_PLATFORM_XLIB_KHR
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = nullptr;
+    PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR vkGetPhysicalDeviceWin32PresentationSupportKHR = nullptr;
+#endif  // VK_USE_PLATFORM_WIN32_KHR
+    PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
+
+    // device functions
+    PFN_vkDestroyDevice vkDestroyDevice = nullptr;
+    PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
+
+    VulkanFunctions();
+
+    FromVoidStarFunc load(VkInstance inst, const char* func_name) const {
+        return FromVoidStarFunc(vkGetInstanceProcAddr(inst, func_name));
+    }
+
+    FromVoidStarFunc load(VkDevice device, const char* func_name) const {
+        return FromVoidStarFunc(vkGetDeviceProcAddr(device, func_name));
+    }
+};
+
+struct DeviceFunctions {
+    PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
+    PFN_vkDestroyDevice vkDestroyDevice = nullptr;
+    PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
+    PFN_vkCreateCommandPool vkCreateCommandPool = nullptr;
+    PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers = nullptr;
+    PFN_vkDestroyCommandPool vkDestroyCommandPool = nullptr;
+    PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR = nullptr;
+    PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR = nullptr;
+    PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR = nullptr;
+
+    DeviceFunctions() = default;
+    DeviceFunctions(const VulkanFunctions& vulkan_functions, VkDevice device);
+
+    FromVoidStarFunc load(VkDevice device, const char* func_name) const {
+        return FromVoidStarFunc(vkGetDeviceProcAddr(device, func_name));
+    }
+};
+
 // InstWrapper & DeviceWrapper - used to make creating instances & devices easier test writing
 struct InstWrapper {
     InstWrapper(VulkanFunctions& functions, VkAllocationCallbacks* callbacks = nullptr) noexcept;
@@ -211,6 +352,11 @@ struct DebugUtilsLogger {
     DebugUtilsLogger& operator=(DebugUtilsLogger&&) = delete;
     // Find a string in the log output
     bool find(std::string const& search_text) const { return returned_output.find(search_text) != std::string::npos; }
+
+    // Look through the event log. If you find a line containing the prefix we're interested in, look for the end of
+    // line character, and then see if the postfix occurs in it as well.
+    bool find_prefix_then_postfix(const char* prefix, const char* postfix) const;
+
     // Clear the log
     void clear() { returned_output.clear(); }
     VkDebugUtilsMessengerCreateInfoEXT* get() noexcept { return &create_info; }
@@ -262,7 +408,7 @@ void FillDebugUtilsCreateDetails(InstanceCreateInfo& create_info, DebugUtilsWrap
 struct FrameworkEnvironment;  // forward declaration
 
 struct PlatformShimWrapper {
-    PlatformShimWrapper(std::vector<fs::FolderManager>* folders) noexcept;
+    PlatformShimWrapper(std::vector<fs::FolderManager>* folders, bool enable_log) noexcept;
     ~PlatformShimWrapper() noexcept;
     PlatformShimWrapper(PlatformShimWrapper const&) = delete;
     PlatformShimWrapper& operator=(PlatformShimWrapper const&) = delete;
@@ -319,6 +465,7 @@ struct TestICDDetails {
     }
     BUILDER_VALUE(TestICDDetails, ManifestICD, icd_manifest, {});
     BUILDER_VALUE(TestICDDetails, std::string, json_name, "test_icd");
+    BUILDER_VALUE(TestICDDetails, bool, disable_icd_inc, false);
     BUILDER_VALUE(TestICDDetails, ManifestDiscoveryType, discovery_type, ManifestDiscoveryType::generic);
     BUILDER_VALUE(TestICDDetails, bool, is_fake, false);
 };
@@ -388,10 +535,27 @@ struct FrameworkEnvironment {
     void add_layer_impl(TestLayerDetails layer_details, ManifestCategory category);
 };
 
+// helper function which return a valid WSI platform extension
+// const char* api_selection: use this to select an extension on platforms that support multiple extensions
+const char* get_platform_wsi_extension(const char* api_selection = nullptr);
+
 // The following helpers setup an icd with the required extensions and setting to use with WSI
 // By default they use whatever the set VK_USE_PLATFORM_XXX macros define
-void setup_WSI_in_ICD(TestICD& icd);
-void setup_WSI_in_create_instance(InstWrapper& inst);
-// api_selection: optionally provide a VK_USE_PLATFORM_XXX string to select which API to create a surface with
-// Note: MUST provide api_selection on platforms with multiple viable API's, such as linux and MacOS
-VkSurfaceKHR create_surface(InstWrapper& inst, const char* api_selection = nullptr);
+void setup_WSI_in_ICD(TestICD& icd, const char* api_selection = nullptr);
+void setup_WSI_in_create_instance(InstWrapper& inst, const char* api_selection = nullptr);
+
+// Create a surface using a platform specific API
+// api_selection: optionally provide a VK_USE_PLATFORM_XXX string to select which API to create a surface with.
+//    defaults to Metal on macOS and XCB on linux if not provided
+// Returns an assertion failure if the surface failed to be created
+testing::AssertionResult create_surface(InstWrapper& inst, VkSurfaceKHR& out_surface, const char* api_selection = nullptr);
+
+struct EnvVarCleaner {
+    std::string env_var;
+    EnvVarCleaner(std::string env_var) noexcept : env_var(env_var) {}
+    ~EnvVarCleaner() noexcept { remove_env_var(env_var); }
+
+    // delete copy operators
+    EnvVarCleaner(const EnvVarCleaner&) = delete;
+    EnvVarCleaner& operator=(const EnvVarCleaner&) = delete;
+};

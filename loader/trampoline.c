@@ -160,21 +160,19 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceExtensionPropert
 
     // Get the implicit layers
     struct loader_layer_list layers;
-    memset(&layers, 0, sizeof(layers));
-    loader_scan_for_implicit_layers(NULL, &layers);
-
-    // We'll need to save the dl handles so we can close them later
-    loader_platform_dl_handle *libs =
-        loader_calloc(NULL, sizeof(loader_platform_dl_handle) * layers.count, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-    if (libs == NULL && layers.count > 0) {
-        return VK_ERROR_OUT_OF_HOST_MEMORY;
-    }
+    loader_platform_dl_handle *libs = NULL;
     size_t lib_count = 0;
+    memset(&layers, 0, sizeof(layers));
+
+    res = loader_scan_for_implicit_layers(NULL, &layers, &libs);
+    if (VK_SUCCESS != res) {
+        return res;
+    }
 
     // Prepend layers onto the chain if they implement this entry point
     for (uint32_t i = 0; i < layers.count; ++i) {
-        if (!loader_implicit_layer_is_enabled(NULL, layers.list + i) ||
-            layers.list[i].pre_instance_functions.enumerate_instance_extension_properties[0] == '\0') {
+        // Skip this layer if it doesn't expose the entry-point
+        if (layers.list[i].pre_instance_functions.enumerate_instance_extension_properties[0] == '\0') {
             continue;
         }
 
@@ -255,24 +253,17 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceLayerProperties(
 
     // Get the implicit layers
     struct loader_layer_list layers;
-    memset(&layers, 0, sizeof(layers));
-    loader_scan_for_implicit_layers(NULL, &layers);
-
-    // We'll need to save the dl handles so we can close them later
-    loader_platform_dl_handle *libs =
-        loader_calloc(NULL, sizeof(loader_platform_dl_handle) * layers.count, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-    if (libs == NULL && layers.count > 0) {
-        return VK_ERROR_OUT_OF_HOST_MEMORY;
-    }
+    loader_platform_dl_handle *libs = NULL;
     size_t lib_count = 0;
+    memset(&layers, 0, sizeof(layers));
+
+    res = loader_scan_for_implicit_layers(NULL, &layers, &libs);
+    if (VK_SUCCESS != res) {
+        return res;
+    }
 
     // Prepend layers onto the chain if they implement this entry point
     for (uint32_t i = 0; i < layers.count; ++i) {
-        if (!loader_implicit_layer_is_enabled(NULL, layers.list + i) ||
-            layers.list[i].pre_instance_functions.enumerate_instance_layer_properties[0] == '\0') {
-            continue;
-        }
-
         loader_platform_dl_handle layer_lib = loader_platform_open_library(layers.list[i].lib_name);
         if (layer_lib == NULL) {
             loader_log(NULL, VULKAN_LOADER_WARN_BIT, 0, "%s: Unable to load implicit layer library \"%s\"", __FUNCTION__,
@@ -357,21 +348,19 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkEnumerateInstanceVersion(uint32_t
 
     // Get the implicit layers
     struct loader_layer_list layers;
-    memset(&layers, 0, sizeof(layers));
-    loader_scan_for_implicit_layers(NULL, &layers);
-
-    // We'll need to save the dl handles so we can close them later
-    loader_platform_dl_handle *libs =
-        loader_calloc(NULL, sizeof(loader_platform_dl_handle) * layers.count, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-    if (libs == NULL && layers.count > 0) {
-        return VK_ERROR_OUT_OF_HOST_MEMORY;
-    }
+    loader_platform_dl_handle *libs = NULL;
     size_t lib_count = 0;
+    memset(&layers, 0, sizeof(layers));
+
+    res = loader_scan_for_implicit_layers(NULL, &layers, &libs);
+    if (VK_SUCCESS != res) {
+        return res;
+    }
 
     // Prepend layers onto the chain if they implement this entry point
     for (uint32_t i = 0; i < layers.count; ++i) {
-        if (!loader_implicit_layer_is_enabled(NULL, layers.list + i) ||
-            layers.list[i].pre_instance_functions.enumerate_instance_version[0] == '\0') {
+        // Skip this layer if it doesn't expose the entry-point
+        if (layers.list[i].pre_instance_functions.enumerate_instance_version[0] == '\0') {
             continue;
         }
 
@@ -470,8 +459,6 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
         ptr_instance->app_api_version = LOADER_VERSION_1_0_0;
     } else {
         ptr_instance->app_api_version = loader_make_version(pCreateInfo->pApplicationInfo->apiVersion);
-        // zero out the patch version since we don't actually want to compare with it
-        ptr_instance->app_api_version.patch = 0;
     }
 
     // Look for one or more VK_EXT_debug_report or VK_EXT_debug_utils create info structures
@@ -521,9 +508,10 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
     // get layer list via loader_scan_for_layers().
     memset(&ptr_instance->instance_layer_list, 0, sizeof(ptr_instance->instance_layer_list));
     res = loader_scan_for_layers(ptr_instance, &ptr_instance->instance_layer_list);
-    if (res == VK_ERROR_OUT_OF_HOST_MEMORY) {
+    if (VK_SUCCESS != res) {
         goto out;
     }
+
     // Validate the app requested layers to be enabled
     if (pCreateInfo->enabledLayerCount > 0) {
         res = loader_validate_layers(ptr_instance, pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames,
@@ -545,8 +533,8 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
             loader_log(
                 ptr_instance, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
                 "vkCreateInstance: Found drivers that contain devices which support the portability subset, but the "
-                "portability enumeration bit was not set!. Applications that wish to enumerate portability drivers must set the "
-                "VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR bit in the VkInstanceCreateInfo flags and"
+                "portability enumeration bit was not set! Applications that wish to enumerate portability drivers must set the "
+                "VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR bit in the VkInstanceCreateInfo flags and "
                 "enable the VK_KHR_portability_enumeration instance extension.");
         }
         loader_log(ptr_instance, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_DRIVER_BIT, 0, "vkCreateInstance: Found no drivers!");
@@ -574,8 +562,10 @@ LOADER_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCr
     }
     memcpy(&ptr_instance->disp->layer_inst_disp, &instance_disp, sizeof(instance_disp));
 
+    loader_platform_thread_lock_mutex(&loader_global_instance_list_lock);
     ptr_instance->next = loader.instances;
     loader.instances = ptr_instance;
+    loader_platform_thread_unlock_mutex(&loader_global_instance_list_lock);
 
     // Activate any layers on instance chain
     res = loader_enable_instance_layers(ptr_instance, &ici, &ptr_instance->instance_layer_list);
@@ -613,10 +603,13 @@ out:
 
     if (NULL != ptr_instance) {
         if (res != VK_SUCCESS) {
+            loader_platform_thread_lock_mutex(&loader_global_instance_list_lock);
             // error path, should clean everything up
             if (loader.instances == ptr_instance) {
                 loader.instances = ptr_instance->next;
             }
+            loader_platform_thread_unlock_mutex(&loader_global_instance_list_lock);
+
             loader_instance_heap_free(ptr_instance, ptr_instance->disp);
             // Remove any created VK_EXT_debug_report or VK_EXT_debug_utils items
             destroy_debug_callbacks_chain(ptr_instance, pAllocator);
@@ -648,6 +641,7 @@ out:
             ptr_instance->InstanceCreationDeletionDebugFunctionHead = ptr_instance->DbgFunctionHead;
             ptr_instance->DbgFunctionHead = NULL;
         }
+        // Only unlock when ptr_instance isn't NULL, as if it is, the above code didn't make it to when loader_lock was locked.
         loader_platform_thread_unlock_mutex(&loader_lock);
     }
 

@@ -1069,10 +1069,10 @@ TEST(TryLoadWrongBinaries, WrongExplicit) {
 
     // Should get an error message for the explicit layer
 #ifndef __APPLE__
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name) + std::string(" was wrong bit-type!")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name) + std::string("\" was wrong bit-type!")));
 #else   // __APPLE__
     // Apple only throws a wrong library type of error
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name) + std::string(" failed to load!")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name) + std::string("\" failed to load!")));
 #endif  // __APPLE__
 }
 
@@ -1106,10 +1106,10 @@ TEST(TryLoadWrongBinaries, WrongImplicit) {
 
 #ifndef __APPLE__
     // Should get an info message for the bad implicit layer
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name) + std::string(" was wrong bit-type.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name) + std::string("\" was wrong bit-type.")));
 #else   // __APPLE__
     // Apple only throws a wrong library type of error
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name) + std::string(" failed to load.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name) + std::string("\" failed to load.")));
 #endif  // __APPLE__
 }
 
@@ -1149,12 +1149,12 @@ TEST(TryLoadWrongBinaries, WrongExplicitAndImplicit) {
 #ifndef __APPLE__
     // Should get error messages for both (the explicit is second and we don't want the implicit to return before the explicit
     // triggers a failure during vkCreateInstance)
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_0) + std::string(" was wrong bit-type!")));
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_1) + std::string(" was wrong bit-type.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_0) + std::string("\" was wrong bit-type!")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_1) + std::string("\" was wrong bit-type.")));
 #else   // __APPLE__
     // Apple only throws a wrong library type of error
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_0) + std::string(" failed to load!")));
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_1) + std::string(" failed to load.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_0) + std::string("\" failed to load!")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_1) + std::string("\" failed to load.")));
 #endif  // __APPLE__
 }
 
@@ -1193,12 +1193,12 @@ TEST(TryLoadWrongBinaries, WrongExplicitAndImplicitErrorOnly) {
 
 #ifndef __APPLE__
     // Should not get an error messages for either
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_0) + std::string(" was wrong bit-type!")));
-    ASSERT_FALSE(log.find(std::string("Requested layer ") + std::string(layer_name_1) + std::string(" was wrong bit-type.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_0) + std::string("\" was wrong bit-type!")));
+    ASSERT_FALSE(log.find(std::string("Requested layer \"") + std::string(layer_name_1) + std::string("\" was wrong bit-type.")));
 #else   // __APPLE__
     // Apple only throws a wrong library type of error
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_0) + std::string(" failed to load!")));
-    ASSERT_FALSE(log.find(std::string("Requested layer ") + std::string(layer_name_1) + std::string(" failed to load.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_0) + std::string("\" failed to load!")));
+    ASSERT_FALSE(log.find(std::string("Requested layer \"") + std::string(layer_name_1) + std::string("\" failed to load.")));
 #endif  // __APPLE__
 }
 
@@ -1230,7 +1230,7 @@ TEST(TryLoadWrongBinaries, BadExplicit) {
     inst.CheckCreate(VK_ERROR_LAYER_NOT_PRESENT);
 
     // Should get an error message for the bad explicit
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name) + std::string(" failed to load!")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name) + std::string("\" failed to load!")));
 }
 
 TEST(TryLoadWrongBinaries, BadImplicit) {
@@ -1262,7 +1262,7 @@ TEST(TryLoadWrongBinaries, BadImplicit) {
     inst.CheckCreate(VK_SUCCESS);
 
     // Should get an info message for the bad implicit
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name) + std::string(" failed to load.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name) + std::string("\" failed to load.")));
 }
 
 TEST(TryLoadWrongBinaries, BadExplicitAndImplicit) {
@@ -1299,8 +1299,8 @@ TEST(TryLoadWrongBinaries, BadExplicitAndImplicit) {
     inst.CheckCreate(VK_ERROR_LAYER_NOT_PRESENT);
 
     // Apple only throws a wrong library type of error
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_0) + std::string(" failed to load!")));
-    ASSERT_TRUE(log.find(std::string("Requested layer ") + std::string(layer_name_1) + std::string(" failed to load.")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_0) + std::string("\" failed to load!")));
+    ASSERT_TRUE(log.find(std::string("Requested layer \"") + std::string(layer_name_1) + std::string("\" failed to load.")));
 }
 
 TEST(TryLoadWrongBinaries, WrongArchDriver) {
@@ -2815,6 +2815,7 @@ TEST(SortedPhysicalDevices, DevicesSortedDisabled) {
     FrameworkEnvironment env{};
 
     set_env_var("VK_LOADER_DISABLE_SELECT", "1");
+    EnvVarCleaner disable_select_cleaner("VK_LOADER_DISABLE_SELECT");
 
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2, VK_API_VERSION_1_0));
     env.get_test_icd(0).add_instance_extension({VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME});
@@ -2917,8 +2918,6 @@ TEST(SortedPhysicalDevices, DevicesSortedDisabled) {
     for (uint32_t dev = 0; dev < device_count; ++dev) {
         ASSERT_EQ(physical_devices[dev], physical_devices_again[dev]);
     }
-
-    remove_env_var("VK_LOADER_DISABLE_SELECT");
 }
 
 TEST(SortedPhysicalDevices, DeviceGroupsSortedEnabled) {
@@ -3109,6 +3108,7 @@ TEST(SortedPhysicalDevices, DeviceGroupsSortedDisabled) {
     FrameworkEnvironment env{};
 
     set_env_var("VK_LOADER_DISABLE_SELECT", "1");
+    EnvVarCleaner disable_select_cleaner("VK_LOADER_DISABLE_SELECT");
 
     // ICD 0: Vulkan 1.1
     //   PhysDev 0: pd0, Discrete, Vulkan 1.1, Bus 7
@@ -3277,16 +3277,14 @@ TEST(SortedPhysicalDevices, DeviceGroupsSortedDisabled) {
             ASSERT_EQ(physical_device_groups[group].physicalDevices[dev], physical_device_groups_again[group].physicalDevices[dev]);
         }
     }
-
-    remove_env_var("VK_LOADER_DISABLE_SELECT");
 }
 
 #endif  // __linux__ || __FreeBSD__ || __OpenBSD__
 
 const char* portability_driver_warning =
     "vkCreateInstance: Found drivers that contain devices which support the portability subset, but the "
-    "portability enumeration bit was not set!. Applications that wish to enumerate portability drivers must set the "
-    "VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR bit in the VkInstanceCreateInfo flags and"
+    "portability enumeration bit was not set! Applications that wish to enumerate portability drivers must set the "
+    "VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR bit in the VkInstanceCreateInfo flags and "
     "enable the VK_KHR_portability_enumeration instance extension.";
 
 TEST(PortabilityICDConfiguration, PortabilityICDOnly) {
@@ -3526,6 +3524,123 @@ TEST(AppPackageDriverDiscovery, AppPackageTest) {
 
     InstWrapper inst{env.vulkan_functions};
     inst.CheckCreate();
+}
+
+// Make sure that stale layer manifests (path to nonexistant file) which have the same name as real manifests don't cause the real
+// manifests to be skipped. Stale registry entries happen when a registry is written on layer/driver installation but not cleaned up
+// when the corresponding manifest is removed from the file system.
+TEST(DuplicateRegistryEntries, Layers) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(ManifestICD{}.set_lib_path(TEST_ICD_PATH_VERSION_2)));
+
+    auto null_path = env.get_folder(ManifestLocation::null).location() / "test_layer.json";
+
+    env.platform_shim->add_manifest(ManifestCategory::explicit_layer, null_path.str());
+
+    const char* layer_name = "TestLayer";
+    env.add_explicit_layer(
+        ManifestLayer{}.add_layer(
+            ManifestLayer::LayerDescription{}.set_name(layer_name).set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)),
+        "test_layer.json");
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.add_layer(layer_name);
+    inst.CheckCreate();
+}
+
+// Check that the de-duplication of drivers found in both PnP and generic Khronos/Vulkan/Drivers doesn't result in the same thing
+// being added twice
+TEST(DuplicateRegistryEntries, Drivers) {
+    FrameworkEnvironment env{};
+    auto null_path = env.get_folder(ManifestLocation::null).location() / "test_icd_0.json";
+    env.platform_shim->add_manifest(ManifestCategory::icd, null_path.str());
+
+    env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA}.set_discovery_type(ManifestDiscoveryType::none));
+    auto& driver = env.get_test_icd();
+    driver.physical_devices.emplace_back("physical_device_0");
+    driver.adapterLUID = _LUID{10, 1000};
+    env.platform_shim->add_d3dkmt_adapter(D3DKMT_Adapter{0, _LUID{10, 1000}}.add_driver_manifest_path(env.get_icd_manifest_path()));
+
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+    inst.CheckCreate();
+    ASSERT_TRUE(env.debug_log.find(
+        std::string("Skipping adding of json file \"") + null_path.str() +
+        "\" from registry \"HKEY_LOCAL_MACHINE\\SOFTWARE\\Khronos\\Vulkan\\Drivers\" to the list due to duplication"));
+}
+#endif
+
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+// Check that valid symlinks do not cause the loader to crash when directly in an XDG env-var
+TEST(ManifestDiscovery, ValidSymlinkInXDGEnvVar) {
+    FrameworkEnvironment env{true, false};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::none));
+    env.get_test_icd().physical_devices.push_back({});
+    auto driver_path = env.get_icd_manifest_path(0);
+    std::string symlink_name = "symlink_to_driver.json";
+    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
+    env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
+    int res = symlink(driver_path.c_str(), symlink_path.c_str());
+    ASSERT_EQ(res, 0);
+    set_env_var("XDG_CONFIG_DIRS", symlink_path.str());
+
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+    inst.CheckCreate();
+}
+
+// Check that valid symlinks do not cause the loader to crash
+TEST(ManifestDiscovery, ValidSymlink) {
+    FrameworkEnvironment env{true, false};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::none));
+    env.get_test_icd().physical_devices.push_back({});
+
+    auto driver_path = env.get_icd_manifest_path(0);
+    std::string symlink_name = "symlink_to_driver.json";
+    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
+    env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
+    int res = symlink(driver_path.c_str(), symlink_path.c_str());
+    ASSERT_EQ(res, 0);
+
+    env.platform_shim->set_path(ManifestCategory::icd, env.get_folder(ManifestLocation::driver_env_var).location());
+
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+    inst.CheckCreate();
+}
+
+// Check that invalid symlinks do not cause the loader to crash when directly in an XDG env-var
+TEST(ManifestDiscovery, InvalidSymlinkXDGEnvVar) {
+    FrameworkEnvironment env{true, false};
+    std::string symlink_name = "symlink_to_nothing.json";
+    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
+    fs::path invalid_driver_path = env.get_folder(ManifestLocation::driver).location() / "nothing_here.json";
+    int res = symlink(invalid_driver_path.c_str(), symlink_path.c_str());
+    ASSERT_EQ(res, 0);
+    env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
+
+    set_env_var("XDG_CONFIG_DIRS", symlink_path.str());
+
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+    inst.CheckCreate(VK_ERROR_INCOMPATIBLE_DRIVER);
+}
+
+// Check that invalid symlinks do not cause the loader to crash
+TEST(ManifestDiscovery, InvalidSymlink) {
+    FrameworkEnvironment env{true, false};
+    std::string symlink_name = "symlink_to_nothing.json";
+    fs::path symlink_path = env.get_folder(ManifestLocation::driver).location() / symlink_name;
+    fs::path invalid_driver_path = env.get_folder(ManifestLocation::driver_env_var).location() / "nothing_here.json";
+    int res = symlink(invalid_driver_path.c_str(), symlink_path.c_str());
+    ASSERT_EQ(res, 0);
+    env.get_folder(ManifestLocation::driver).add_existing_file(symlink_name);
+
+    env.platform_shim->set_path(ManifestCategory::icd, env.get_folder(ManifestLocation::driver_env_var).location());
+
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+    inst.CheckCreate(VK_ERROR_INCOMPATIBLE_DRIVER);
 }
 #endif
 

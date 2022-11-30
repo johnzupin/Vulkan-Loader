@@ -138,7 +138,8 @@ TEST(WsiTests, GetPhysicalDeviceWin32PresentNoICDSupport) {
     cur_icd.enable_icd_wsi = false;
 
     InstWrapper inst{env.vulkan_functions};
-    inst.create_info.add_extensions({VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME});
+    inst.create_info.add_extensions(
+        {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
     inst.CheckCreate();
 
     uint32_t driver_count = 1;
@@ -146,8 +147,11 @@ TEST(WsiTests, GetPhysicalDeviceWin32PresentNoICDSupport) {
     ASSERT_EQ(VK_SUCCESS, inst->vkEnumeratePhysicalDevices(inst, &driver_count, &physical_device));
     ASSERT_EQ(driver_count, 1U);
 
-    ASSERT_DEATH(env.vulkan_functions.vkGetPhysicalDeviceWin32PresentationSupportKHR(physical_device, 0),
-                 "ICD for selected physical device does not export vkGetPhysicalDeviceWin32PresentationSupportKHR!");
+    DebugUtilsWrapper log{inst};
+    CreateDebugUtilsMessenger(log);
+    auto res = env.vulkan_functions.vkGetPhysicalDeviceWin32PresentationSupportKHR(physical_device, 0);
+    ASSERT_EQ(res, VK_FALSE);
+    ASSERT_TRUE(log.find("ICD for selected physical device does not export vkGetPhysicalDeviceWin32PresentationSupportKHR!"));
 }
 
 TEST(WsiTests, GetPhysicalDeviceWin32PresentICDSupport) {
@@ -323,7 +327,8 @@ TEST(WsiTests, GetPhysicalDeviceXcbPresentNoICDSupport) {
     cur_icd.enable_icd_wsi = false;
 
     InstWrapper inst{env.vulkan_functions};
-    inst.create_info.add_extensions({VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XCB_SURFACE_EXTENSION_NAME});
+    inst.create_info.add_extensions(
+        {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XCB_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
     inst.CheckCreate();
 
     uint32_t driver_count = 1;
@@ -331,8 +336,11 @@ TEST(WsiTests, GetPhysicalDeviceXcbPresentNoICDSupport) {
     ASSERT_EQ(VK_SUCCESS, inst->vkEnumeratePhysicalDevices(inst, &driver_count, &physical_device));
     ASSERT_EQ(driver_count, 1U);
 
-    ASSERT_DEATH(env.vulkan_functions.vkGetPhysicalDeviceXcbPresentationSupportKHR(physical_device, 0, nullptr, 0),
-                 "ICD for selected physical device does not export vkGetPhysicalDeviceXcbPresentationSupportKHR!");
+    DebugUtilsWrapper log{inst};
+    CreateDebugUtilsMessenger(log);
+    auto res = env.vulkan_functions.vkGetPhysicalDeviceXcbPresentationSupportKHR(physical_device, 0, nullptr, 0);
+    ASSERT_EQ(res, VK_FALSE);
+    ASSERT_TRUE(log.find("ICD for selected physical device does not export vkGetPhysicalDeviceXcbPresentationSupportKHR!"));
 }
 
 TEST(WsiTests, GetPhysicalDeviceXcbPresentICDSupport) {
@@ -508,7 +516,8 @@ TEST(WsiTests, GetPhysicalDeviceXlibPresentNoICDSupport) {
     cur_icd.enable_icd_wsi = false;
 
     InstWrapper inst{env.vulkan_functions};
-    inst.create_info.add_extensions({VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME});
+    inst.create_info.add_extensions(
+        {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
     inst.CheckCreate();
 
     uint32_t driver_count = 1;
@@ -516,8 +525,11 @@ TEST(WsiTests, GetPhysicalDeviceXlibPresentNoICDSupport) {
     ASSERT_EQ(VK_SUCCESS, inst->vkEnumeratePhysicalDevices(inst, &driver_count, &physical_device));
     ASSERT_EQ(driver_count, 1U);
 
-    ASSERT_DEATH(env.vulkan_functions.vkGetPhysicalDeviceXlibPresentationSupportKHR(physical_device, 0, nullptr, 0),
-                 "ICD for selected physical device does not export vkGetPhysicalDeviceXlibPresentationSupportKHR!");
+    DebugUtilsWrapper log{inst};
+    CreateDebugUtilsMessenger(log);
+    auto res = env.vulkan_functions.vkGetPhysicalDeviceXlibPresentationSupportKHR(physical_device, 0, nullptr, 0);
+    ASSERT_EQ(res, VK_FALSE);
+    ASSERT_TRUE(log.find("ICD for selected physical device does not export vkGetPhysicalDeviceXlibPresentationSupportKHR!"));
 }
 
 TEST(WsiTests, GetPhysicalDeviceXlibPresentICDSupport) {
@@ -693,7 +705,8 @@ TEST(WsiTests, GetPhysicalDeviceWaylandPresentNoICDSupport) {
     cur_icd.enable_icd_wsi = false;
 
     InstWrapper inst{env.vulkan_functions};
-    inst.create_info.add_extensions({VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME});
+    inst.create_info.add_extensions(
+        {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME});
     inst.CheckCreate();
 
     uint32_t driver_count = 1;
@@ -701,8 +714,11 @@ TEST(WsiTests, GetPhysicalDeviceWaylandPresentNoICDSupport) {
     ASSERT_EQ(VK_SUCCESS, inst->vkEnumeratePhysicalDevices(inst, &driver_count, &physical_device));
     ASSERT_EQ(driver_count, 1U);
 
-    ASSERT_DEATH(env.vulkan_functions.vkGetPhysicalDeviceWaylandPresentationSupportKHR(physical_device, 0, nullptr),
-                 "ICD for selected physical device does not export vkGetPhysicalDeviceWaylandPresentationSupportKHR!");
+    DebugUtilsWrapper log{inst};
+    CreateDebugUtilsMessenger(log);
+    auto res = env.vulkan_functions.vkGetPhysicalDeviceWaylandPresentationSupportKHR(physical_device, 0, nullptr);
+    ASSERT_EQ(res, VK_FALSE);
+    ASSERT_TRUE(log.find("ICD for selected physical device does not export vkGetPhysicalDeviceWaylandPresentationSupportKHR!"));
 }
 
 TEST(WsiTests, GetPhysicalDeviceWaylandPresentICDSupport) {
@@ -768,3 +784,109 @@ TEST(WsiTests, WaylandGetPhysicalDeviceSurfaceSupportKHR) {
     env.vulkan_functions.vkDestroySurfaceKHR(instance.inst, surface, nullptr);
 }
 #endif
+
+TEST(WsiTests, ForgetEnableSurfaceExtensions) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+    auto& driver = env.get_test_icd();
+    setup_WSI_in_ICD(driver);
+    MockQueueFamilyProperties family_props{{VK_QUEUE_GRAPHICS_BIT, 1, 0, {1, 1, 1}}, true};
+
+    driver.physical_devices.emplace_back("physical_device_0");
+    driver.physical_devices.back().queue_family_properties.push_back(family_props);
+    driver.physical_devices.back().add_extension("VK_KHR_swapchain");
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.add_extension("VK_KHR_surface");
+    ASSERT_NO_FATAL_FAILURE(inst.CheckCreate());
+
+    VkSurfaceKHR surface{};
+    ASSERT_FALSE(create_surface(inst, surface));
+}
+
+TEST(WsiTests, SwapchainFunctional) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+    auto& driver = env.get_test_icd();
+    setup_WSI_in_ICD(driver);
+    MockQueueFamilyProperties family_props{{VK_QUEUE_GRAPHICS_BIT, 1, 0, {1, 1, 1}}, true};
+
+    driver.physical_devices.emplace_back("physical_device_0");
+    driver.physical_devices.back().queue_family_properties.push_back(family_props);
+    driver.physical_devices.back().add_extension("VK_KHR_swapchain");
+
+    InstWrapper inst{env.vulkan_functions};
+    setup_WSI_in_create_instance(inst);
+    inst.CheckCreate();
+    VkSurfaceKHR surface{};
+    create_surface(inst, surface);
+    VkPhysicalDevice phys_dev = inst.GetPhysDev();
+
+    {  // Use GDPA to get functions
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.create_info.add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
+
+        ASSERT_NO_FATAL_FAILURE(dev.CheckCreate(phys_dev));
+
+        VkSwapchainKHR swapchain{};
+        VkSwapchainCreateInfoKHR swap_create_info{};
+        swap_create_info.surface = surface;
+        DeviceFunctions funcs{*inst.functions, dev};
+        ASSERT_EQ(VK_SUCCESS, funcs.vkCreateSwapchainKHR(dev, &swap_create_info, nullptr, &swapchain));
+        uint32_t count = 0;
+        ASSERT_EQ(VK_SUCCESS, funcs.vkGetSwapchainImagesKHR(dev, swapchain, &count, nullptr));
+        ASSERT_GT(count, 0U);
+        std::array<VkImage, 16> images;
+        ASSERT_EQ(VK_SUCCESS, funcs.vkGetSwapchainImagesKHR(dev, swapchain, &count, images.data()));
+        funcs.vkDestroySwapchainKHR(dev, swapchain, nullptr);
+    }
+    {  // Use GIPA gotten functions
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.create_info.add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
+
+        ASSERT_NO_FATAL_FAILURE(dev.CheckCreate(phys_dev));
+
+        PFN_vkCreateSwapchainKHR inst_CreateSwapchainKHR = inst.load("vkCreateSwapchainKHR");
+        PFN_vkGetSwapchainImagesKHR inst_GetSwapchainImagesKHR = inst.load("vkGetSwapchainImagesKHR");
+        PFN_vkDestroySwapchainKHR inst_DestroySwapchainKHR = inst.load("vkDestroySwapchainKHR");
+        ASSERT_TRUE(nullptr != inst_CreateSwapchainKHR);
+        ASSERT_TRUE(nullptr != inst_GetSwapchainImagesKHR);
+        ASSERT_TRUE(nullptr != inst_DestroySwapchainKHR);
+
+        VkSwapchainKHR swapchain{};
+        VkSwapchainCreateInfoKHR swap_create_info{};
+        swap_create_info.surface = surface;
+
+        ASSERT_EQ(VK_SUCCESS, inst_CreateSwapchainKHR(dev, &swap_create_info, nullptr, &swapchain));
+        uint32_t count = 0;
+        ASSERT_EQ(VK_SUCCESS, inst_GetSwapchainImagesKHR(dev, swapchain, &count, nullptr));
+        ASSERT_GT(count, 0U);
+        std::array<VkImage, 16> images;
+        ASSERT_EQ(VK_SUCCESS, inst_GetSwapchainImagesKHR(dev, swapchain, &count, images.data()));
+        inst_DestroySwapchainKHR(dev, swapchain, nullptr);
+    }
+    {  // forget to enable the extension
+        DeviceWrapper dev{inst};
+        ASSERT_NO_FATAL_FAILURE(dev.CheckCreate(phys_dev));
+
+        DeviceFunctions funcs{*inst.functions, dev};
+        ASSERT_EQ(funcs.vkCreateSwapchainKHR, nullptr);
+        ASSERT_EQ(funcs.vkGetSwapchainImagesKHR, nullptr);
+        ASSERT_EQ(funcs.vkDestroySwapchainKHR, nullptr);
+    }
+    {  // forget to set the surface
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.create_info.add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
+
+        dev.CheckCreate(phys_dev);
+
+        VkSwapchainKHR swapchain{};
+        VkSwapchainCreateInfoKHR swap_create_info{};
+        DeviceFunctions funcs{*inst.functions, dev};
+        ASSERT_DEATH(funcs.vkCreateSwapchainKHR(dev, &swap_create_info, nullptr, &swapchain), "");
+    }
+    env.vulkan_functions.vkDestroySurfaceKHR(inst.inst, surface, nullptr);
+}
