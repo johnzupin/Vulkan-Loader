@@ -1,3 +1,132 @@
+vulkan-loader (1.3.235.0~rc1-1lunarg20.04-1) focal; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.229
+  * ci: Do apt update before install to fix 404 errors
+
+  [ PaperChalice ]
+  * loader: fix log message
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.230
+
+  [ Juan Ramos ]
+  * build: Fix CMake warnings
+
+  [ Charles Giessen ]
+  * Don't load layer libraries in vkCreateDevice
+  * Enable cross compile test discovery
+  * Don't abort when drivers don't support WSI calls
+  * Fix issue with MSVC 15 failing to compile test code
+  * Guard loader.instances access with mutex.
+  * Revert "Don't load layer libraries in vkCreateDevice"
+  * Correctly handle layers not being loaded in vkCreateDevice
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.231
+
+  [ Juan Ramos ]
+  * ci: Use MACOS_DEPLOYMENT_TARGET
+
+  [ Charles Giessen ]
+  * Write gen_defines.asm using a python script
+  * Only deduplicate driver manifests
+  * Use correct allocator in debug_utils.c
+  * Restore asm_offset printing code
+  * Update BUILD.md
+  * Don't query vkCreateSwapchainKHR with GIPA
+  * Document vk_icdGetInstanceProcAddr querying device functions
+
+  [ danny.zhu ]
+  * fix: add dev pointer checking before using
+
+  [ Danny Zhu ]
+  * fix: add dev pointer checking
+  * fix: add null pointer checking
+  * fix: format code
+
+  [ Charles Giessen ]
+  * Revert "Document vk_icdGetInstanceProcAddr querying device functions"
+  * Revert "Don't query vkCreateSwapchainKHR with GIPA"
+  * Fix linux 32 bit unknown function error handling
+  * Add 32 bit github actions CI
+  * Remove vkCreateSwapchainKHR from ICD Dispatch table
+  * Document vk_icdGetInstanceProcAddr querying device functions
+  * Revert "Document vk_icdGetInstanceProcAddr querying device functions"
+  * Revert "Remove vkCreateSwapchainKHR from ICD Dispatch table"
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.232
+
+  [ Charles Giessen ]
+  * Remove Device functions from ICD Dispatch table
+  * Use macos-11 in github actions to work around bugs
+  * Null check vk_icdGetPhysicalDeviceProcAddr
+  * Test Wrap Layer didn't unwrap in vkGetInstanceProcAddr
+  * Remove implicit fallthroughs; Add warning
+  * Remove override layer expiration
+  * Dont abort when driver doesn't support debug utils
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.233
+
+  [ Jeremy Gebben ]
+  * Do not include vk_sdk_platform.h
+
+  [ Mark Young ]
+  * Add loader enable/disable env vars
+  * Update so filters apply results to vkEnumInstanceLayerProps
+  * Put placeholder for loader version
+  * Update and clarify filter documentation
+
+  [ Charles Giessen ]
+  * Remove redundant layer searching in term_EnumDevExts
+  * Add the 1.3.224 Header version to the Env-Var documentation
+  * Fix env-var filtering in layer enumeration
+  * Fix tests for env-var filtering due to previous commit
+  * Fix vulkan.pc Libs.private for static builds
+
+  [ Mark Mentovai ]
+  * loader/cJSON: replace sprintf calls with snprintf
+
+  [ Charles Giessen ]
+  * Remove USE_CCACHE build option
+
+  [ Juan Ramos ]
+  * cmake: Use new VulkanHeaders cmake support
+
+  [ Charles Giessen ]
+  * Dont abort when WSI functions are NULL.
+  * Remove log message of ICD extension lists
+  * Call both EnumPhysDevs & EnumAdapterPhysDevs on drivers
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.234
+
+  [ Charles Giessen ]
+  * Add macOS-latest CI action
+
+  [ Juan Ramos ]
+  * cmake: CMake cleanup
+
+  [ Waffl3x ]
+  * Remove redundant code loader_make_version recently was changed to zero out the patch version, explicitly doing it is no longer necessary.
+
+  [ Charles Giessen ]
+  * Recheck API version in terminator_CreateInstance
+  * Handle invalid files & symlinks properly
+  * Fix cases where OOM was handled wrong
+  * Propagate OOHM error from json parsing
+  * Add complex json file to allocation tests
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.235
+
+  [ Charles Giessen ]
+  * Add more OOM handling paths and refactor OOM tests
+
+ -- john <john@odin>  Wed, 30 Nov 2022 12:49:18 -0700
+
 vulkan-loader (1.3.231.0~rc2-1lunarg20.04-1) focal; urgency=medium
 
   [ Charles Giessen ]
