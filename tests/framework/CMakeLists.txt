@@ -41,6 +41,8 @@ if (UNIX)
         target_link_options(testing_framework_util PUBLIC -fsanitize=thread)
         target_compile_options(vulkan PUBLIC -fsanitize=thread)
         target_link_options(vulkan PUBLIC -fsanitize=thread)
+        target_compile_options(gtest PUBLIC -fsanitize=thread)
+        target_link_options(gtest PUBLIC -fsanitize=thread)
     endif()
 endif()
 
@@ -49,7 +51,6 @@ if (MSVC)
     target_compile_options(testing_framework_util PUBLIC /wd4458)
 endif()
 
-include(CMakeParseArguments)
 function(AddSharedLibrary LIBRARY_NAME)
     set(singleValueArgs DEF_FILE)
     set(multiValueArgs SOURCES DEFINITIONS)
@@ -83,17 +84,21 @@ add_custom_command(
     PRE_BUILD
     COMMAND ${CMAKE_COMMAND} "-E" "copy_if_different" "${CMAKE_CURRENT_BINARY_DIR}/framework_config_$<CONFIG>.h" "${CMAKE_CURRENT_BINARY_DIR}/framework_config.h"
     VERBATIM
-    PRE_BUILD
     DEPENDS  "${CMAKE_CURRENT_BINARY_DIR}/framework_config_$<CONFIG>.h"
     OUTPUT   "${CMAKE_CURRENT_BINARY_DIR}/framework_config.h"
     COMMENT  "creating framework_config.h file ({event: PRE_BUILD}, {filename: framework_config.h })"
     )
 add_custom_target (generate_framework_config DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/framework_config.h")
+add_dependencies (generate_framework_config vulkan)
 add_dependencies (testing_framework_util generate_framework_config)
 
 add_library(testing_dependencies STATIC test_environment.cpp test_environment.h)
 target_link_libraries(testing_dependencies
     PUBLIC gtest Vulkan::Headers testing_framework_util shim-library)
-target_include_directories(testing_dependencies PUBLIC ${CMAKE_BINARY_DIR}/tests/framework)
+target_include_directories(testing_dependencies PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_definitions(testing_dependencies PUBLIC "GTEST_LINKED_AS_SHARED_LIBRARY=1")
 set_target_properties(testing_dependencies ${LOADER_STANDARD_CXX_PROPERTIES})
+if (APPLE AND BUILD_STATIC_LOADER)
+    target_compile_definitions(testing_dependencies PUBLIC "BUILD_STATIC_LOADER=1")
+    target_link_libraries(testing_dependencies PUBLIC vulkan)
+endif()

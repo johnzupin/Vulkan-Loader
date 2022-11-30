@@ -55,6 +55,10 @@ int main(int argc, char** argv) {
     remove_env_var("VK_LAYER_PATH");
     remove_env_var("VK_ADD_LAYER_PATH");
     remove_env_var("VK_INSTANCE_LAYERS");
+    remove_env_var("VK_LOADER_DRIVERS_SELECT");
+    remove_env_var("VK_LOADER_DRIVERS_DISABLE");
+    remove_env_var("VK_LOADER_LAYERS_ENABLE");
+    remove_env_var("VK_LOADER_LAYERS_DISABLE");
     remove_env_var("VK_LOADER_DEBUG");
     remove_env_var("VK_LOADER_DISABLE_INST_EXT_FILTER");
 
@@ -67,7 +71,6 @@ int main(int argc, char** argv) {
 #if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
     set_env_var("HOME", "/home/fake_home");
 #endif
-
     ::testing::InitGoogleTest(&argc, argv);
     int result = RUN_ALL_TESTS();
 

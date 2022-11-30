@@ -877,6 +877,19 @@ typedef struct VkLayerDispatchTable_ {
     PFN_vkExportMetalObjectsEXT ExportMetalObjectsEXT;
 #endif // VK_USE_PLATFORM_METAL_EXT
 
+    // ---- VK_EXT_descriptor_buffer extension commands
+    PFN_vkGetDescriptorSetLayoutSizeEXT GetDescriptorSetLayoutSizeEXT;
+    PFN_vkGetDescriptorSetLayoutBindingOffsetEXT GetDescriptorSetLayoutBindingOffsetEXT;
+    PFN_vkGetDescriptorEXT GetDescriptorEXT;
+    PFN_vkCmdBindDescriptorBuffersEXT CmdBindDescriptorBuffersEXT;
+    PFN_vkCmdSetDescriptorBufferOffsetsEXT CmdSetDescriptorBufferOffsetsEXT;
+    PFN_vkCmdBindDescriptorBufferEmbeddedSamplersEXT CmdBindDescriptorBufferEmbeddedSamplersEXT;
+    PFN_vkGetBufferOpaqueCaptureDescriptorDataEXT GetBufferOpaqueCaptureDescriptorDataEXT;
+    PFN_vkGetImageOpaqueCaptureDescriptorDataEXT GetImageOpaqueCaptureDescriptorDataEXT;
+    PFN_vkGetImageViewOpaqueCaptureDescriptorDataEXT GetImageViewOpaqueCaptureDescriptorDataEXT;
+    PFN_vkGetSamplerOpaqueCaptureDescriptorDataEXT GetSamplerOpaqueCaptureDescriptorDataEXT;
+    PFN_vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT GetAccelerationStructureOpaqueCaptureDescriptorDataEXT;
+
     // ---- VK_NV_fragment_shading_rate_enums extension commands
     PFN_vkCmdSetFragmentShadingRateEnumNV CmdSetFragmentShadingRateEnumNV;
 
@@ -971,6 +984,14 @@ typedef struct VkLayerDispatchTable_ {
     // ---- VK_VALVE_descriptor_set_host_mapping extension commands
     PFN_vkGetDescriptorSetLayoutHostMappingInfoVALVE GetDescriptorSetLayoutHostMappingInfoVALVE;
     PFN_vkGetDescriptorSetHostMappingVALVE GetDescriptorSetHostMappingVALVE;
+
+    // ---- VK_NV_copy_memory_indirect extension commands
+    PFN_vkCmdCopyMemoryIndirectNV CmdCopyMemoryIndirectNV;
+    PFN_vkCmdCopyMemoryToImageIndirectNV CmdCopyMemoryToImageIndirectNV;
+
+    // ---- VK_NV_memory_decompression extension commands
+    PFN_vkCmdDecompressMemoryNV CmdDecompressMemoryNV;
+    PFN_vkCmdDecompressMemoryIndirectCountNV CmdDecompressMemoryIndirectCountNV;
 
     // ---- VK_EXT_extended_dynamic_state3 extension commands
     PFN_vkCmdSetTessellationDomainOriginEXT CmdSetTessellationDomainOriginEXT;

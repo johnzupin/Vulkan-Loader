@@ -516,7 +516,8 @@ TEST(MultipleICDConfig, version_5_and_version_6) {
               env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, physical_device_handles.data()));
     ASSERT_EQ(physical_count, returned_physical_count);
 
-    VkSurfaceKHR surface = create_surface(inst);
+    VkSurfaceKHR surface{};
+    create_surface(inst, surface);
     for (const auto& handle : physical_device_handles) {
         handle_assert_has_value(handle);
 
@@ -854,8 +855,8 @@ TEST(LayerManifest, ImplicitNonVulkanVariant) {
     inst.create_info.set_api_version(VK_MAKE_API_VERSION(0, 1, 0, 0));
     FillDebugUtilsCreateDetails(inst.create_info, log);
     inst.CheckCreate();
-    ASSERT_TRUE(log.find(std::string("Layer ") + implicit_layer_name +
-                         " has an \'api_version\' field which contains a non-zero variant value of 1.  Skipping Layer."));
+    ASSERT_TRUE(log.find(std::string("Layer \"") + implicit_layer_name +
+                         "\" has an \'api_version\' field which contains a non-zero variant value of 1.  Skipping Layer."));
 }
 
 TEST(LayerManifest, ExplicitNonVulkanVariant) {
@@ -875,8 +876,8 @@ TEST(LayerManifest, ExplicitNonVulkanVariant) {
     inst.create_info.set_api_version(VK_MAKE_API_VERSION(0, 1, 0, 0)).add_layer(explicit_layer_name);
     FillDebugUtilsCreateDetails(inst.create_info, log);
     inst.CheckCreate(VK_ERROR_LAYER_NOT_PRESENT);
-    ASSERT_TRUE(log.find(std::string("Layer ") + explicit_layer_name +
-                         " has an \'api_version\' field which contains a non-zero variant value of 1.  Skipping Layer."));
+    ASSERT_TRUE(log.find(std::string("Layer \"") + explicit_layer_name +
+                         "\" has an \'api_version\' field which contains a non-zero variant value of 1.  Skipping Layer."));
 }
 
 TEST(DriverManifest, UnknownManifestVersion) {
