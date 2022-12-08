@@ -1,3 +1,13 @@
+vulkan-loader (1.3.236.0~rc1-1lunarg20.04-1) focal; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.236
+
+  [ ziga-lunarg ]
+  * loader: Fix parsing VK_INSTANCE_LAYERS
+
+ -- john <john@odin>  Thu, 08 Dec 2022 12:23:10 -0700
+
 vulkan-loader (1.3.235.0~rc1-1lunarg20.04-1) focal; urgency=medium
 
   [ Mike Schuchardt ]
