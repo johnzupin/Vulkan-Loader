@@ -3,64 +3,17 @@ Upstream-Name: libvulkan1
 Source: https://github.com/KhronosGroup/Vulkan-Loader
 
 Files: *
-Copyright: 2015-2019, Google Inc
-           2015-2016, Google, Inc
-           2014-2022, LunarG, Inc
-           2018-2019, The ANGLE Project Authors
-           2017, The Glslang Authors
-           2013-2020, The Khronos Group Inc
-           2014-2021, Valve Corporation
-License: Apache-2.0
-
-Files: .clang-format
-       .cmake-format.py
-       .gitattributes
-       BUILD.md
-       CODE_OF_CONDUCT.md
-       CONTRIBUTING.md
-       GOVERNANCE.md
-       README.md
-       build-gn/DEPS
-       cmake/*
-       external/README.md
-       loader/LoaderAndLayerInterface.md
-       loader/README.md
-       loader/dirent_on_windows.c
-       loader/dirent_on_windows.h
-       loader/generated/.clang-format
-       loader/images/*
-       loader/loader.aps
-       loader/loader_cmake_config.h.in
-       loader/vulkan.pc.in
-       scripts/known_good.json
-       tests/README.md
-       tests/_run_all_tests.ps1
-       tests/layers/json/*
-       tests/run_all_tests.sh
-       tests/run_extra_loader_tests.sh
-       tests/run_loader_tests.sh
-       tests/run_wrap_objects_tests.sh
-       tests/vk_layer_settings.txt
-       tests/vk_loader_validation_tests.vcxproj.user
-       vulkan.symbols.api
 Copyright: 2022, CopyrightLunarG Inc
            1997-2012, Kevlin Henney
-           2022, LunarG, Inc
-           2015-2019, LunarG, Inc. -->
-           2015, The Khronos Group Inc
-           2015, Valve Corporation
+           2015-2022, LunarG, Inc
+           2015-2021, The Khronos Group Inc
+           2015-2021, Valve Corporation
            after any existing copyrights
            included
-License: Apache-2.0
-
-Files: debian/*
-Copyright: 2022, LunarG, Inc
-           2016, Timo Aaltonen <tjaalton@debian.org>
-License: BSD-3-clause or GPL-3 or MIT
+License: Apache-2 or Apache-2.0
 
 Files: cmake/Copyright_cmake.txt
        cmake/FindDirectFB.cmake
-       cmake/FindWayland.cmake
        cmake/FindX11_XCB.cmake
 Copyright: 2011, Fredrik Höglund <fredrik@kde.org>
            2008, Helio Chissini de Castro <helio@kde.org>
@@ -69,21 +22,153 @@ Copyright: 2011, Fredrik Höglund <fredrik@kde.org>
            2007, Matthias Kretz <kretz@kde.org>
 License: BSD-3-clause
 
-Files: loader/murmurhash.c
-       loader/murmurhash.h
-Copyright: 2015-2016, LunarG, Inc
-           2015-2016, The Khronos Group Inc
-           2015-2016, Valve Corporation
-           2014, joseph werle <joseph.werle@gmail.com>
+Files: .github/workflows/*
+       .gn
+       BUILD.gn
+       CMakeLists.txt
+       LICENSE.txt
+       build-gn/secondary/*
+       build-gn/update_deps.sh
+       fuchsia/*
+       loader/CMakeLists.txt
+       loader/adapters.h
+       loader/allocation.c
+       loader/allocation.h
+       loader/asm_offset.c
+       loader/asm_test_aarch64.S
+       loader/asm_test_x86.S
+       loader/debug_utils.c
+       loader/debug_utils.h
+       loader/dev_ext_trampoline.c
+       loader/extension_manual.c
+       loader/extension_manual.h
+       loader/generated/loader_generated_header_version.cmake
+       loader/generated/vk_dispatch_table_helper.h
+       loader/generated/vk_layer_dispatch_table.h
+       loader/generated/vk_loader_extensions.c
+       loader/generated/vk_loader_extensions.h
+       loader/generated/vk_object_types.h
+       loader/gpa_helper.c
+       loader/gpa_helper.h
+       loader/loader.c
+       loader/loader.h
+       loader/loader.rc
+       loader/loader.rc.in
+       loader/loader_common.h
+       loader/loader_environment.c
+       loader/loader_environment.h
+       loader/loader_linux.c
+       loader/loader_linux.h
+       loader/loader_windows.c
+       loader/loader_windows.h
+       loader/log.c
+       loader/log.h
+       loader/phys_dev_ext.c
+       loader/stack_allocation.h
+       loader/terminator.c
+       loader/trampoline.c
+       loader/unknown_ext_chain.c
+       loader/unknown_ext_chain_gas_aarch64.S
+       loader/unknown_ext_chain_gas_x86.S
+       loader/unknown_ext_chain_masm.asm
+       loader/unknown_function_handling.c
+       loader/unknown_function_handling.h
+       loader/vk_loader_layer.h
+       loader/vk_loader_platform.h
+       loader/vulkan-1.def
+       loader/wsi.c
+       loader/wsi.h
+       scripts/check_code_format.sh
+       scripts/check_commit_message_format.sh
+       scripts/common_codegen.py
+       scripts/dispatch_table_helper_generator.py
+       scripts/generate_source.py
+       scripts/helper_file_generator.py
+       scripts/loader_extension_generator.py
+       scripts/loader_genvk.py
+       scripts/loader_versioning_generator.py
+       scripts/parse_asm_values.py
+       scripts/update_deps.py
+       tests/CMakeLists.txt
+       tests/framework/CMakeLists.txt
+       tests/framework/icd/CMakeLists.txt
+       tests/framework/layer/CMakeLists.txt
+       tests/framework/layer/wrap_objects.cpp
+       tests/framework/shim/*
+       tests/live_verification/CMakeLists.txt
+       tests/live_verification/dynamic_loader_behavior/CMakeLists.txt
+Copyright: 2015-2021, Google Inc
+           2014-2022, LunarG, Inc
+           2021, NVIDIA CORPORATION & AFFILIATES
+           2018-2019, The ANGLE Project Authors
+           2017, The Glslang Authors
+           2013-2022, The Khronos Group Inc
+           2014-2022, Valve Corporation
+License: Apache-2
+
+Files: tests/framework/framework_config.h.in
+       tests/framework/icd/physical_device.h
+       tests/framework/icd/test_icd.cpp
+       tests/framework/icd/test_icd.h
+       tests/framework/layer/layer_util.h
+       tests/framework/layer/test_layer.cpp
+       tests/framework/layer/test_layer.h
+       tests/framework/shim/shim.h
+       tests/framework/shim/shim_common.cpp
+       tests/framework/shim/unix_shim.cpp
+       tests/framework/shim/windows_shim.cpp
+       tests/framework/test_environment.cpp
+       tests/framework/test_environment.h
+       tests/framework/test_util.cpp
+       tests/framework/test_util.h
+       tests/live_verification/dynamic_loader_behavior/dynamic_library.cpp
+       tests/live_verification/dynamic_loader_behavior/dynamic_library.h
+       tests/live_verification/dynamic_loader_behavior/test_dynamic_linking.cpp
+       tests/live_verification/dynamic_loader_behavior/test_dynamic_loading.cpp
+       tests/live_verification/dynamic_loader_behavior/test_dynamic_loading_and_linking.cpp
+       tests/live_verification/dynamic_rendering_get_proc_addr.cpp
+       tests/live_verification/macos_static_loader_build.cpp
+       tests/loader_alloc_callback_tests.cpp
+       tests/loader_debug_ext_tests.cpp
+       tests/loader_envvar_tests.cpp
+       tests/loader_get_proc_addr_tests.cpp
+       tests/loader_handle_validation_tests.cpp
+       tests/loader_layer_tests.cpp
+       tests/loader_phys_dev_inst_ext_tests.cpp
+       tests/loader_regression_tests.cpp
+       tests/loader_testing_main.cpp
+       tests/loader_threading_tests.cpp
+       tests/loader_unknown_ext_tests.cpp
+       tests/loader_version_tests.cpp
+       tests/loader_wsi_tests.cpp
+Copyright: 2021-2022, LunarG, Inc
+           2021-2022, The Khronos Group Inc
+           2021-2022, Valve Corporation
 License: MIT/X11
+
+Files: docs/LoaderApplicationInterface.md
+       docs/LoaderDebugging.md
+       docs/LoaderDriverInterface.md
+       docs/LoaderInterfaceArchitecture.md
+       docs/LoaderLayerInterface.md
+Copyright: 2015-2022, LunarG, Inc
+License: CC-BY-ND-4
 
 Files: loader/cJSON.c
        loader/cJSON.h
 Copyright: 2009, Dave Gamble
-           2015-2016, LunarG, Inc
-           2015-2016, The Khronos Group Inc
-           2015-2016, Valve Corporation
+           2015-2021, LunarG, Inc
+           2015-2021, The Khronos Group Inc
+           2015-2021, Valve Corporation
 License: Expat
+
+Files: debian/*
+Copyright: 2023, LunarG Inc <johnz@lunarg.com>
+           2016, Timo Aaltonen <tjaalton@debian.org>
+License: BSD-3-clause or GPL-3 or MIT
+
+License: Apache-2
+Comment: Add the corresponding license text here
 
 License: Apache-2.0
  Apache License
@@ -300,6 +385,16 @@ License: BSD-3-clause
  3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  .
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: CC-BY-ND-4
+Comment: Add the corresponding license text here
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
 
 License: GPL-3
  GNU GENERAL PUBLIC LICENSE
@@ -976,13 +1071,6 @@ License: GPL-3
  the library.  If this is what you want to do, use the GNU Lesser General
  Public License instead of this License.  But first, please read
  <https://www.gnu.org/licenses/why-not-lgpl.html>.
-
-License: Expat
- Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- .
- The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- .
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
 
 License: MIT
  Copyright <YEAR> <COPYRIGHT HOLDER>
