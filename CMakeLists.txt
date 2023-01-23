@@ -17,12 +17,10 @@
 cmake_minimum_required(VERSION 3.10.2)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# If we are building in Visual Studio 2015 and with a CMake version 3.19 or greater, we need to set this variable
-# so that CMake will choose a Windows SDK version higher than 10.0.14393.0, as dxgi1_6.h is only found in Windows SDK
-# 10.0.17763 and higher.
-set(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION_MAXIMUM OFF)
-
 project(Vulkan-Loader)
+
+# Gets the header version used during code generation
+include(cmake/generated_header_version.cmake)
 
 if (UPDATE_DEPS)
     find_package(PythonInterp 3 REQUIRED)
@@ -109,7 +107,9 @@ if(BUILD_STATIC_LOADER)
         "or tested as part of the loader. Use it at your own risk.")
 endif()
 
-find_package(VulkanHeaders REQUIRED CONFIG QUIET)
+if (NOT TARGET Vulkan::Headers)
+    find_package(VulkanHeaders REQUIRED CONFIG QUIET)
+endif()
 
 include(GNUInstallDirs)
 
@@ -319,15 +319,14 @@ endif()
 
 # Optional codegen target
 if(PYTHONINTERP_FOUND)
-    get_target_property(VulkanRegistry_DIR Vulkan::Registry INTERFACE_INCLUDE_DIRECTORIES)
     add_custom_target(VulkanLoader_generated_source
                       COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/generate_source.py
-                              ${VulkanRegistry_DIR} --incremental
-                      )
+                              ${VULKAN_HEADERS_REGISTRY_DIRECTORY}
+                              --generated-version ${VulkanHeaders_VERSION}
+                              --incremental)
 else()
     message("WARNING: VulkanLoader_generated_source target requires python 3")
 endif()
-
 
 if(UNIX)
     target_compile_definitions(loader_common_options INTERFACE FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}" FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}")
