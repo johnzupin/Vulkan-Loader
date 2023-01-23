@@ -127,7 +127,7 @@ loader_api_version loader_combine_version(uint32_t major, uint32_t minor, uint32
 bool loader_check_version_meets_required(loader_api_version required, loader_api_version version) {
     // major version is satisfied
     return (version.major > required.major) ||
-           // major version is equal, minor version is patch version is gerater to minimum minor
+           // major version is equal, minor version is patch version is greater to minimum minor
            (version.major == required.major && version.minor > required.minor) ||
            // major and minor version are equal, patch version is greater or equal to minimum patch
            (version.major == required.major && version.minor == required.minor && version.patch >= required.patch);
@@ -169,6 +169,14 @@ void loader_handle_load_library_error(const struct loader_instance *inst, const 
         err_flag = VULKAN_LOADER_INFO_BIT;
         if (NULL != lib_status) {
             *lib_status = LOADER_LAYER_LIB_ERROR_WRONG_BIT_TYPE;
+        }
+    }
+    // Check if the error is due to lack of memory
+    // "with error 8" is the windows error code for OOM cases, aka ERROR_NOT_ENOUGH_MEMORY
+    // Linux doesn't have such a nice error message - only if there are reported issues should this be called
+    else if (strstr(error_message, " with error 8") != NULL) {
+        if (NULL != lib_status) {
+            *lib_status = LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY;
         }
     } else if (NULL != lib_status) {
         *lib_status = LOADER_LAYER_LIB_ERROR_FAILED_TO_LOAD;
@@ -1373,7 +1381,11 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
 #endif
     if (NULL == handle) {
         loader_handle_load_library_error(inst, filename, lib_status);
-        res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        if (lib_status && *lib_status == LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY) {
+            res = VK_ERROR_OUT_OF_HOST_MEMORY;
+        } else {
+            res = VK_ERROR_INCOMPATIBLE_DRIVER;
+        }
         goto out;
     }
 
@@ -1611,15 +1623,13 @@ static void loader_expand_path(const char *path, const char *rel_base, size_t ou
 // @return - A string in out_fullpath of either the full path or file.
 static void loader_get_fullpath(const char *file, const char *in_dirs, size_t out_size, char *out_fullpath) {
     if (!loader_platform_is_path(file) && *in_dirs) {
-        char *dirs_copy, *dir, *next_dir;
-
-        dirs_copy = loader_stack_alloc(strlen(in_dirs) + 1);
+        char *dirs_copy = loader_stack_alloc(strlen(in_dirs) + 1);
         strcpy(dirs_copy, in_dirs);
 
         // find if file exists after prepending paths in given list
         // for (dir = dirs_copy; *dir && (next_dir = loader_get_next_path(dir)); dir = next_dir) {
-        dir = dirs_copy;
-        next_dir = loader_get_next_path(dir);
+        char *dir = dirs_copy;
+        char *next_dir = loader_get_next_path(dir);
         while (*dir && next_dir) {
             loader_platform_combine_path(out_fullpath, out_size, dir, file, NULL);
             if (loader_platform_file_exists(out_fullpath)) {
@@ -3036,8 +3046,7 @@ static VkResult read_data_files_in_search_paths(const struct loader_instance *in
                         memcpy(cur_path_ptr, relative_location, rel_size);
                         cur_path_ptr += rel_size;
                         *cur_path_ptr++ = PATH_SEPARATOR;
-                        // only for ICD manifests
-                        if (override_env != NULL && manifest_type == LOADER_DATA_FILE_MANIFEST_DRIVER) {
+                        if (manifest_type == LOADER_DATA_FILE_MANIFEST_DRIVER) {
                             use_first_found_manifest = true;
                         }
                     }
@@ -3118,7 +3127,7 @@ static VkResult read_data_files_in_search_paths(const struct loader_instance *in
                 log_flags = VULKAN_LOADER_LAYER_BIT;
                 loader_log(inst, VULKAN_LOADER_LAYER_BIT, 0, "Searching for layer manifest files");
             }
-            loader_log(inst, log_flags, 0, "   In following folders:");
+            loader_log(inst, log_flags, 0, "   In following locations:");
             char *cur_file;
             char *next_file = tmp_search_path;
             while (NULL != next_file && *next_file != '\0') {
@@ -3554,6 +3563,7 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
                     break;
                 }
                 case LOADER_LAYER_LIB_SUCCESS_LOADED:
+                case LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY:
                     // Shouldn't be able to reach this but if it is, best to report a debug
                     loader_log(inst, VULKAN_LOADER_WARN_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
                                "Shouldn't reach this. A valid version of requested ICD %s was loaded but something bad "
@@ -4453,6 +4463,9 @@ VkResult loader_create_instance_chain(const VkInstanceCreateInfo *pCreateInfo, c
             }
 
             lib_handle = loader_open_layer_file(inst, layer_prop);
+            if (layer_prop->lib_status == LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY) {
+                return VK_ERROR_OUT_OF_HOST_MEMORY;
+            }
             if (!lib_handle) {
                 continue;
             }
@@ -4602,6 +4615,7 @@ VkResult loader_create_instance_chain(const VkInstanceCreateInfo *pCreateInfo, c
                                ending);
                     break;
                 case LOADER_LAYER_LIB_SUCCESS_LOADED:
+                case LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY:
                     // Shouldn't be able to reach this but if it is, best to report a debug
                     loader_log(inst, log_flag, 0,
                                "Shouldn't reach this. A valid version of requested layer %s was loaded but was not found in the "

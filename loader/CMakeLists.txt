@@ -17,9 +17,6 @@
 # limitations under the License.
 # ~~~
 
-# Get version of the API the generated code used and put it into a cmake variable LOADER_GENERATED_HEADER_VERSION
-include(generated/loader_generated_header_version.cmake)
-
 add_library(loader_specific_options INTERFACE)
 target_link_libraries(loader_specific_options INTERFACE loader_common_options Vulkan::Headers)
 target_include_directories(loader_specific_options INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/generated ${CMAKE_CURRENT_BINARY_DIR})
@@ -160,9 +157,7 @@ if(WIN32)
         target_link_libraries(asm_offset PRIVATE loader_specific_options)
         # If not cross compiling, run asm_offset to generage gen_defines.asm
         if (NOT CMAKE_CROSSCOMPILING)
-            add_custom_command(TARGET asm_offset POST_BUILD
-                COMMAND asm_offset MASM
-                BYPRODUCTS gen_defines.asm)
+            add_custom_command(OUTPUT gen_defines.asm DEPENDS asm_offset COMMAND asm_offset MASM)
         else()
             # Forces compiler to write the intermediate asm file, needed so that we can get sizeof/offset of info out of it.
             target_compile_options(asm_offset PRIVATE "/Fa$<TARGET_FILE_DIR:asm_offset>/asm_offset.asm" /FA)
@@ -236,9 +231,7 @@ else() # i.e.: Linux
         target_link_libraries(asm_offset loader_specific_options)
         # If not cross compiling, run asm_offset to generage gen_defines.asm
         if (NOT CMAKE_CROSSCOMPILING)
-            add_custom_command(TARGET asm_offset POST_BUILD
-                COMMAND asm_offset GAS
-                BYPRODUCTS gen_defines.asm)
+            add_custom_command(OUTPUT gen_defines.asm DEPENDS asm_offset COMMAND asm_offset GAS)
         else()
             # Forces compiler to write the intermediate asm file, needed so that we can get sizeof/offset of info out of it.
             target_compile_options(asm_offset PRIVATE -save-temps=obj)
@@ -317,7 +310,6 @@ else()
         add_library(vulkan SHARED ${NORMAL_LOADER_SRCS} ${OPT_LOADER_SRCS})
     endif()
     add_dependencies(vulkan loader_asm_gen_files)
-    # set version based on LOADER_GENERATED_HEADER_VERSION used to generate the code
     set_target_properties(vulkan
                           PROPERTIES SOVERSION "1"
                           VERSION ${LOADER_GENERATED_HEADER_VERSION})
@@ -359,8 +351,8 @@ else()
             OUTPUT_NAME vulkan
             FRAMEWORK TRUE
             FRAMEWORK_VERSION A
-            VERSION "${LOADER_GENERATED_HEADER_VERSION}" # "current version"
-            SOVERSION "1.0.0"                        # "compatibility version"
+            VERSION "${LOADER_GENERATED_HEADER_VERSION}" # "current generated version"
+            SOVERSION "1.0.0"                  # "compatibility version"
             MACOSX_FRAMEWORK_IDENTIFIER com.lunarg.vulkanFramework
             PUBLIC_HEADER "${FRAMEWORK_HEADERS}"
         )
@@ -409,6 +401,13 @@ if(PKG_CONFIG_FOUND)
     else()
         set(CMAKE_INSTALL_FULL_LIBDIR_PC ${CMAKE_INSTALL_FULL_LIBDIR})
     endif ()
+    if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "")
+        set(CMAKE_INSTALL_REL_LIBDIR_PC ${CMAKE_INSTALL_FULL_LIBDIR_PC})
+        set(CMAKE_INSTALL_REL_INCLUDEDIR_PC ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+    else()
+        file(RELATIVE_PATH CMAKE_INSTALL_REL_LIBDIR_PC ${CMAKE_INSTALL_PREFIX} ${CMAKE_INSTALL_FULL_LIBDIR_PC})
+        file(RELATIVE_PATH CMAKE_INSTALL_REL_INCLUDEDIR_PC ${CMAKE_INSTALL_PREFIX} ${CMAKE_INSTALL_FULL_INCLUDEDIR})
+    endif()
     configure_file("vulkan.pc.in" "vulkan.pc" @ONLY)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/vulkan.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 endif()

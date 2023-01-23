@@ -33,6 +33,7 @@ verify_exclude = ['.clang-format']
 def main(argv):
     parser = argparse.ArgumentParser(description='Generate source code for this repository')
     parser.add_argument('registry', metavar='REGISTRY_PATH', help='path to the Vulkan-Headers registry directory')
+    parser.add_argument('--generated-version', help='sets the header version used to generate the repo')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-i', '--incremental', action='store_true', help='only update repo files that change')
     group.add_argument('-v', '--verify', action='store_true', help='verify repo files match generator output')
@@ -45,8 +46,7 @@ def main(argv):
                                             'vk_layer_dispatch_table.h',
                                             'vk_loader_extensions.h',
                                             'vk_loader_extensions.c',
-                                            'vk_object_types.h',
-                                            'loader_generated_header_version.cmake']]
+                                            'vk_object_types.h']]
 
     repo_dir = common_codegen.repo_relative('loader/generated')
 
@@ -106,6 +106,14 @@ def main(argv):
                not filecmp.cmp(temp_filename, repo_filename, shallow=False):
                 print('update', repo_filename)
                 shutil.copyfile(temp_filename, repo_filename)
+
+    # write out the header version used to generate the code to a checked in CMake FIle
+    if args.generated_version:
+        f = open(common_codegen.repo_relative('cmake/generated_header_version.cmake'), "w")
+        f.write('# *** THIS FILE IS GENERATED - DO NOT EDIT ***\n')
+        f.write('# See generate_source.py for modifications\n')
+        f.write(f'set(LOADER_GENERATED_HEADER_VERSION {args.generated_version})')
+        f.close()
 
     return 0
 

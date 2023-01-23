@@ -2347,7 +2347,7 @@ TEST(EnumeratePhysicalDeviceGroups, FakePNext) {
     // NOTE: This is a fake struct to make sure the pNext chain is properly passed down to the ICD
     //       vkEnumeratePhysicalDeviceGroups.
     //       The two versions must match:
-    //           "FakePNext" test in loader_regresion_tests.cpp
+    //           "FakePNext" test in loader_regression_tests.cpp
     //           "test_vkEnumeratePhysicalDeviceGroups" in test_icd.cpp
     struct FakePnextSharedWithICD {
         VkStructureType sType;
@@ -3644,76 +3644,48 @@ TEST(ManifestDiscovery, InvalidSymlink) {
 }
 #endif
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-// Check that valid symlinks do not cause the loader to crash when directly in an XDG env-var
-TEST(ManifestDiscovery, ValidSymlinkInXDGEnvVar) {
-    FrameworkEnvironment env{true, false};
-    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::none));
-    env.get_test_icd().physical_devices.push_back({});
-    auto driver_path = env.get_icd_manifest_path(0);
-    std::string symlink_name = "symlink_to_driver.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
-    env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
-    int res = symlink(driver_path.c_str(), symlink_path.c_str());
-    ASSERT_EQ(res, 0);
-    set_env_var("XDG_CONFIG_DIRS", symlink_path.str());
+#if defined(__APPLE__)
+// Add two drivers, one to the bundle and one to the system locations
+TEST(ManifestDiscovery, AppleBundles) {
+    FrameworkEnvironment env{};
+    env.setup_macos_bundle();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::macos_bundle));
+    env.get_test_icd(0).physical_devices.push_back({});
+    env.get_test_icd(0).physical_devices.at(0).properties.deviceID = 1337;
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA));
+    env.get_test_icd(1).physical_devices.push_back({});
+    env.get_test_icd(1).physical_devices.at(0).properties.deviceID = 9999;
 
     InstWrapper inst{env.vulkan_functions};
-    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
-    inst.CheckCreate();
+    ASSERT_NO_FATAL_FAILURE(inst.CheckCreate());
+    auto physical_devices = inst.GetPhysDevs();
+    ASSERT_EQ(1, physical_devices.size());
+
+    // Verify that this is the 'right' GPU, aka the one from the bundle
+    VkPhysicalDeviceProperties props{};
+    inst->vkGetPhysicalDeviceProperties(physical_devices[0], &props);
+    ASSERT_EQ(env.get_test_icd(0).physical_devices.at(0).properties.deviceID, props.deviceID);
 }
 
-// Check that valid symlinks do not cause the loader to crash
-TEST(ManifestDiscovery, ValidSymlink) {
-    FrameworkEnvironment env{true, false};
-    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::none));
-    env.get_test_icd().physical_devices.push_back({});
-
-    auto driver_path = env.get_icd_manifest_path(0);
-    std::string symlink_name = "symlink_to_driver.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
-    env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
-    int res = symlink(driver_path.c_str(), symlink_path.c_str());
-    ASSERT_EQ(res, 0);
-
-    env.platform_shim->set_path(ManifestCategory::icd, env.get_folder(ManifestLocation::driver_env_var).location());
+// Add two drivers, one to the bundle and one using the driver env-var
+TEST(ManifestDiscovery, AppleBundlesEnvVarActive) {
+    FrameworkEnvironment env{};
+    env.setup_macos_bundle();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::macos_bundle));
+    env.get_test_icd(0).physical_devices.push_back({});
+    env.get_test_icd(0).physical_devices.at(0).properties.deviceID = 1337;
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::env_var));
+    env.get_test_icd(1).physical_devices.push_back({});
+    env.get_test_icd(1).physical_devices.at(0).properties.deviceID = 9999;
 
     InstWrapper inst{env.vulkan_functions};
-    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
-    inst.CheckCreate();
-}
+    ASSERT_NO_FATAL_FAILURE(inst.CheckCreate());
+    auto physical_devices = inst.GetPhysDevs();
+    ASSERT_EQ(1, physical_devices.size());
 
-// Check that invalid symlinks do not cause the loader to crash when directly in an XDG env-var
-TEST(ManifestDiscovery, InvalidSymlinkXDGEnvVar) {
-    FrameworkEnvironment env{true, false};
-    std::string symlink_name = "symlink_to_nothing.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
-    fs::path invalid_driver_path = env.get_folder(ManifestLocation::driver).location() / "nothing_here.json";
-    int res = symlink(invalid_driver_path.c_str(), symlink_path.c_str());
-    ASSERT_EQ(res, 0);
-    env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
-
-    set_env_var("XDG_CONFIG_DIRS", symlink_path.str());
-
-    InstWrapper inst{env.vulkan_functions};
-    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
-    inst.CheckCreate(VK_ERROR_INCOMPATIBLE_DRIVER);
-}
-
-// Check that invalid symlinks do not cause the loader to crash
-TEST(ManifestDiscovery, InvalidSymlink) {
-    FrameworkEnvironment env{true, false};
-    std::string symlink_name = "symlink_to_nothing.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver).location() / symlink_name;
-    fs::path invalid_driver_path = env.get_folder(ManifestLocation::driver_env_var).location() / "nothing_here.json";
-    int res = symlink(invalid_driver_path.c_str(), symlink_path.c_str());
-    ASSERT_EQ(res, 0);
-    env.get_folder(ManifestLocation::driver).add_existing_file(symlink_name);
-
-    env.platform_shim->set_path(ManifestCategory::icd, env.get_folder(ManifestLocation::driver_env_var).location());
-
-    InstWrapper inst{env.vulkan_functions};
-    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
-    inst.CheckCreate(VK_ERROR_INCOMPATIBLE_DRIVER);
+    // Verify that this is the 'right' GPU, aka the one from the env-var
+    VkPhysicalDeviceProperties props{};
+    inst->vkGetPhysicalDeviceProperties(physical_devices[0], &props);
+    ASSERT_EQ(env.get_test_icd(1).physical_devices.at(0).properties.deviceID, props.deviceID);
 }
 #endif
