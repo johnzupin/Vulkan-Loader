@@ -1,3 +1,73 @@
+vulkan-loader (1.3.239.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Jan Palus ]
+  * cmake: fix pkgconfig file for absolute install paths
+
+  [ Charles Giessen ]
+  * Use integrity_level >= HIGH for is_high_integrity
+
+  [ John Bauman ]
+  * loader: Mark unknown_ext_chain symbols as hidden
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.236
+
+  [ ziga-lunarg ]
+  * loader: Fix parsing VK_INSTANCE_LAYERS
+
+  [ phish3y ]
+  * Layers: update documentation to make it clear the VK_LAYER_PATH supports both explicit directories and files
+  * Layers: add test to verify VK_LAYER_PATH supports explicit file paths instead of just directories
+  * Layers: add tests to verify VK_LAYER_PATH works with full file paths
+  * Layers: modify TestLayerDetails so either files or directories can be set on VK_LAYER_PATH env var
+  * Layers: update log message and documentation so it is clear that VK_LAYER_PATH does not only search directories
+  * Layers: expand tests to check layer names loaded are expected
+
+  [ Charles Giessen ]
+  * Document interaction of layer env-vars for linux
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.237
+
+  [ Richard S. Wright Jr ]
+  * Fix for Apple compiler bug
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.238
+
+  [ Juan Ramos ]
+  * cmake: Use VulkanHeaders_VERSION
+
+  [ Charles Giessen ]
+  * Revert asm_offset CMake code to work with 3.10
+  * Fix allocation callback test to start at 0
+  * Add Vulkan-Headers version to source
+  * Fix Bundled drivers on MacOS taking precedence
+  * Add macOS bundles support to test framework
+  * Document behavior change in how bundles drivers are used
+
+  [ Juan Ramos ]
+  * cmake: Fix usage of Vulkan::Registry
+
+  [ B Marques ]
+  * Added target condition to vulkan headers
+
+  [ Charles Giessen ]
+  * Try to catch OOM errors when loading binaries
+  * Add guard for GetPhysDevProcAddr typedef
+
+  [ Juan Ramos ]
+  * ci: Test CMake minimum
+  * build: Remove VS2015 support
+
+  [ John Zupin ]
+  * packaging: debian: update copyright
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.239
+
+ -- john <john@odin>  Mon, 23 Jan 2023 12:23:47 -0700
+
 vulkan-loader (1.3.236.0~rc2-1lunarg22.04-1) jammy; urgency=medium
 
   [ Richard S. Wright Jr ]
