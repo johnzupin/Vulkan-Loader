@@ -1,0 +1,32 @@
+name: build-focal-package
+run-name: ${{ github.actor }} is learning GitHub Actions
+on: [push]
+jobs:
+  build-vulkan-headers-package:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build-vulkan-headers-focal-ubuntu-package
+        with:
+          repo: "johnzupin/Vulkan-Headers"
+          ref: "ubuntu/focal-unstable"
+      - run: "pwd"
+      - run: "ls -l"
+      - run: "ls -l Vulkan-Headers"
+      - run: "cat test.txt"
+  build-packages:
+    needs: 'build-vulkan-headers-package'
+    runs-on: ubuntu-20.04
+    steps:
+      - run: "env"
+      - run: "whoami"
+      - uses: actions/checkout@v3
+      - run: |
+          sudo apt-get install git build-essential libx11-xcb-dev \
+          libxkbcommon-dev libwayland-dev libxrandr-dev \
+          libegl1-mesa-dev python3-distutils git-buildpackage cmake \
+          python debhelper
+      - run: "cmake --version"
+      - run: "./scripts/update_deps --dir /tmp/"
+      - run: "ls -l /tmp/"
+      - run: "gbp buildpackage --git-verbose --git-force-create -us"

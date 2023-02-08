@@ -1,0 +1,17 @@
+name: 'Build Vulkan-Headers Package for Ubuntu Focal'
+description: 'Build the Vulkan-Headers Package for dependency install'
+inputs:
+  repo:
+    description: 'What repo to clone the Vulkan-Headers package from'
+    required: true
+    default: 'main'
+  ref:
+    description: 'What ref to build the Vulkan-Headers package with'
+    required: true
+    default: 'main'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.repo }}
+    - ${{ inputs.ref }}
