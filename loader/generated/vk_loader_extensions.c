@@ -749,6 +749,8 @@ VKAPI_ATTR void VKAPI_CALL loader_init_device_extension_dispatch_table(struct lo
 
     // ---- VK_EXT_discard_rectangles extension commands
     table->CmdSetDiscardRectangleEXT = (PFN_vkCmdSetDiscardRectangleEXT)gdpa(dev, "vkCmdSetDiscardRectangleEXT");
+    table->CmdSetDiscardRectangleEnableEXT = (PFN_vkCmdSetDiscardRectangleEnableEXT)gdpa(dev, "vkCmdSetDiscardRectangleEnableEXT");
+    table->CmdSetDiscardRectangleModeEXT = (PFN_vkCmdSetDiscardRectangleModeEXT)gdpa(dev, "vkCmdSetDiscardRectangleModeEXT");
 
     // ---- VK_EXT_hdr_metadata extension commands
     table->SetHdrMetadataEXT = (PFN_vkSetHdrMetadataEXT)gdpa(dev, "vkSetHdrMetadataEXT");
@@ -818,6 +820,7 @@ VKAPI_ATTR void VKAPI_CALL loader_init_device_extension_dispatch_table(struct lo
     table->CmdDrawMeshTasksIndirectCountNV = (PFN_vkCmdDrawMeshTasksIndirectCountNV)gdpa(dev, "vkCmdDrawMeshTasksIndirectCountNV");
 
     // ---- VK_NV_scissor_exclusive extension commands
+    table->CmdSetExclusiveScissorEnableNV = (PFN_vkCmdSetExclusiveScissorEnableNV)gdpa(dev, "vkCmdSetExclusiveScissorEnableNV");
     table->CmdSetExclusiveScissorNV = (PFN_vkCmdSetExclusiveScissorNV)gdpa(dev, "vkCmdSetExclusiveScissorNV");
 
     // ---- VK_NV_device_diagnostic_checkpoints extension commands
@@ -1384,11 +1387,30 @@ void init_extension_device_proc_terminator_dispatch(struct loader_device *dev) {
 #endif // None
 }
 
+// These are prototypes for functions that need their trampoline called in all circumstances.
+// They are used in loader_lookup_device_dispatch_table but are defined afterwards.
+    // ---- VK_EXT_debug_marker extension commands
+VKAPI_ATTR VkResult VKAPI_CALL DebugMarkerSetObjectTagEXT(
+    VkDevice                                    device,
+    const VkDebugMarkerObjectTagInfoEXT*        pTagInfo);
+VKAPI_ATTR VkResult VKAPI_CALL DebugMarkerSetObjectNameEXT(
+    VkDevice                                    device,
+    const VkDebugMarkerObjectNameInfoEXT*       pNameInfo);
+    // ---- VK_EXT_debug_utils extension commands
+VKAPI_ATTR VkResult VKAPI_CALL SetDebugUtilsObjectNameEXT(
+    VkDevice                                    device,
+    const VkDebugUtilsObjectNameInfoEXT*        pNameInfo);
+VKAPI_ATTR VkResult VKAPI_CALL SetDebugUtilsObjectTagEXT(
+    VkDevice                                    device,
+    const VkDebugUtilsObjectTagInfoEXT*         pTagInfo);
+
 // Device command lookup function
 VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDispatchTable *table, const char *name) {
     if (!name || name[0] != 'v' || name[1] != 'k') return NULL;
 
     name += 2;
+    struct loader_device* dev = (struct loader_device *)table;
+
 
     // ---- Core 1_0 commands
     if (!strcmp(name, "GetDeviceProcAddr")) return (void *)table->GetDeviceProcAddr;
@@ -1762,8 +1784,8 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
     if (!strcmp(name, "GetDeviceImageSparseMemoryRequirementsKHR")) return (void *)table->GetDeviceImageSparseMemoryRequirementsKHR;
 
     // ---- VK_EXT_debug_marker extension commands
-    if (!strcmp(name, "DebugMarkerSetObjectTagEXT")) return (void *)table->DebugMarkerSetObjectTagEXT;
-    if (!strcmp(name, "DebugMarkerSetObjectNameEXT")) return (void *)table->DebugMarkerSetObjectNameEXT;
+    if (!strcmp(name, "DebugMarkerSetObjectTagEXT")) return dev->extensions.ext_debug_marker_enabled ? (void *)DebugMarkerSetObjectTagEXT : NULL;
+    if (!strcmp(name, "DebugMarkerSetObjectNameEXT")) return dev->extensions.ext_debug_marker_enabled ? (void *)DebugMarkerSetObjectNameEXT : NULL;
     if (!strcmp(name, "CmdDebugMarkerBeginEXT")) return (void *)table->CmdDebugMarkerBeginEXT;
     if (!strcmp(name, "CmdDebugMarkerEndEXT")) return (void *)table->CmdDebugMarkerEndEXT;
     if (!strcmp(name, "CmdDebugMarkerInsertEXT")) return (void *)table->CmdDebugMarkerInsertEXT;
@@ -1818,13 +1840,15 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
 
     // ---- VK_EXT_discard_rectangles extension commands
     if (!strcmp(name, "CmdSetDiscardRectangleEXT")) return (void *)table->CmdSetDiscardRectangleEXT;
+    if (!strcmp(name, "CmdSetDiscardRectangleEnableEXT")) return (void *)table->CmdSetDiscardRectangleEnableEXT;
+    if (!strcmp(name, "CmdSetDiscardRectangleModeEXT")) return (void *)table->CmdSetDiscardRectangleModeEXT;
 
     // ---- VK_EXT_hdr_metadata extension commands
     if (!strcmp(name, "SetHdrMetadataEXT")) return (void *)table->SetHdrMetadataEXT;
 
     // ---- VK_EXT_debug_utils extension commands
-    if (!strcmp(name, "SetDebugUtilsObjectNameEXT")) return (void *)table->SetDebugUtilsObjectNameEXT;
-    if (!strcmp(name, "SetDebugUtilsObjectTagEXT")) return (void *)table->SetDebugUtilsObjectTagEXT;
+    if (!strcmp(name, "SetDebugUtilsObjectNameEXT")) return dev->extensions.ext_debug_utils_enabled ? (void *)SetDebugUtilsObjectNameEXT : NULL;
+    if (!strcmp(name, "SetDebugUtilsObjectTagEXT")) return dev->extensions.ext_debug_utils_enabled ? (void *)SetDebugUtilsObjectTagEXT : NULL;
     if (!strcmp(name, "QueueBeginDebugUtilsLabelEXT")) return (void *)table->QueueBeginDebugUtilsLabelEXT;
     if (!strcmp(name, "QueueEndDebugUtilsLabelEXT")) return (void *)table->QueueEndDebugUtilsLabelEXT;
     if (!strcmp(name, "QueueInsertDebugUtilsLabelEXT")) return (void *)table->QueueInsertDebugUtilsLabelEXT;
@@ -1887,6 +1911,7 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
     if (!strcmp(name, "CmdDrawMeshTasksIndirectCountNV")) return (void *)table->CmdDrawMeshTasksIndirectCountNV;
 
     // ---- VK_NV_scissor_exclusive extension commands
+    if (!strcmp(name, "CmdSetExclusiveScissorEnableNV")) return (void *)table->CmdSetExclusiveScissorEnableNV;
     if (!strcmp(name, "CmdSetExclusiveScissorNV")) return (void *)table->CmdSetExclusiveScissorNV;
 
     // ---- VK_NV_device_diagnostic_checkpoints extension commands
@@ -3942,6 +3967,9 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_DebugMarkerSetObjectTagEXT(
                 local_tag_info.object = (uint64_t)icd_surface->real_icd_surfaces[icd_index];
             }
         }
+    // If this is an instance we have to replace it with the proper one for the next call.
+    } else if (pTagInfo->objectType == VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT) {
+        local_tag_info.object = (uint64_t)(uintptr_t)icd_term->instance;
     }
     // Exit early if the driver does not support the function - this can happen as a layer or the loader itself supports
     // debug utils but the driver does not.
@@ -3994,6 +4022,9 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_DebugMarkerSetObjectNameEXT(
                 local_name_info.object = (uint64_t)icd_surface->real_icd_surfaces[icd_index];
             }
         }
+    // If this is an instance we have to replace it with the proper one for the next call.
+    } else if (pNameInfo->objectType == VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT) {
+        local_name_info.object = (uint64_t)(uintptr_t)icd_term->instance;
     }
     // Exit early if the driver does not support the function - this can happen as a layer or the loader itself supports
     // debug utils but the driver does not.
@@ -4483,6 +4514,32 @@ VKAPI_ATTR void VKAPI_CALL CmdSetDiscardRectangleEXT(
     disp->CmdSetDiscardRectangleEXT(commandBuffer, firstDiscardRectangle, discardRectangleCount, pDiscardRectangles);
 }
 
+VKAPI_ATTR void VKAPI_CALL CmdSetDiscardRectangleEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    discardRectangleEnable) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(commandBuffer);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkCmdSetDiscardRectangleEnableEXT: Invalid commandBuffer "
+                   "[VUID-vkCmdSetDiscardRectangleEnableEXT-commandBuffer-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->CmdSetDiscardRectangleEnableEXT(commandBuffer, discardRectangleEnable);
+}
+
+VKAPI_ATTR void VKAPI_CALL CmdSetDiscardRectangleModeEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkDiscardRectangleModeEXT                   discardRectangleMode) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(commandBuffer);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkCmdSetDiscardRectangleModeEXT: Invalid commandBuffer "
+                   "[VUID-vkCmdSetDiscardRectangleModeEXT-commandBuffer-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->CmdSetDiscardRectangleModeEXT(commandBuffer, discardRectangleMode);
+}
+
 
 // ---- VK_EXT_hdr_metadata extension trampoline/terminators
 
@@ -4552,6 +4609,9 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_SetDebugUtilsObjectNameEXT(
                 local_name_info.objectHandle = (uint64_t)icd_surface->real_icd_surfaces[icd_index];
             }
         }
+    // If this is an instance we have to replace it with the proper one for the next call.
+    } else if (pNameInfo->objectType == VK_OBJECT_TYPE_INSTANCE) {
+        local_name_info.objectHandle = (uint64_t)(uintptr_t)icd_term->instance;
     }
     // Exit early if the driver does not support the function - this can happen as a layer or the loader itself supports
     // debug utils but the driver does not.
@@ -4608,6 +4668,9 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_SetDebugUtilsObjectTagEXT(
                 local_tag_info.objectHandle = (uint64_t)icd_surface->real_icd_surfaces[icd_index];
             }
         }
+    // If this is an instance we have to replace it with the proper one for the next call.
+    } else if (pTagInfo->objectType == VK_OBJECT_TYPE_INSTANCE) {
+        local_tag_info.objectHandle = (uint64_t)(uintptr_t)icd_term->instance;
     }
     // Exit early if the driver does not support the function - this can happen as a layer or the loader itself supports
     // debug utils but the driver does not.
@@ -5344,6 +5407,21 @@ VKAPI_ATTR void VKAPI_CALL CmdDrawMeshTasksIndirectCountNV(
 
 
 // ---- VK_NV_scissor_exclusive extension trampoline/terminators
+
+VKAPI_ATTR void VKAPI_CALL CmdSetExclusiveScissorEnableNV(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstExclusiveScissor,
+    uint32_t                                    exclusiveScissorCount,
+    const VkBool32*                             pExclusiveScissorEnables) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(commandBuffer);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkCmdSetExclusiveScissorEnableNV: Invalid commandBuffer "
+                   "[VUID-vkCmdSetExclusiveScissorEnableNV-commandBuffer-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->CmdSetExclusiveScissorEnableNV(commandBuffer, firstExclusiveScissor, exclusiveScissorCount, pExclusiveScissorEnables);
+}
 
 VKAPI_ATTR void VKAPI_CALL CmdSetExclusiveScissorNV(
     VkCommandBuffer                             commandBuffer,
@@ -8796,6 +8874,14 @@ bool extension_instance_gpa(struct loader_instance *ptr_instance, const char *na
         *addr = (void *)CmdSetDiscardRectangleEXT;
         return true;
     }
+    if (!strcmp("vkCmdSetDiscardRectangleEnableEXT", name)) {
+        *addr = (void *)CmdSetDiscardRectangleEnableEXT;
+        return true;
+    }
+    if (!strcmp("vkCmdSetDiscardRectangleModeEXT", name)) {
+        *addr = (void *)CmdSetDiscardRectangleModeEXT;
+        return true;
+    }
 
     // ---- VK_EXT_hdr_metadata extension commands
     if (!strcmp("vkSetHdrMetadataEXT", name)) {
@@ -9006,6 +9092,10 @@ bool extension_instance_gpa(struct loader_instance *ptr_instance, const char *na
     }
 
     // ---- VK_NV_scissor_exclusive extension commands
+    if (!strcmp("vkCmdSetExclusiveScissorEnableNV", name)) {
+        *addr = (void *)CmdSetExclusiveScissorEnableNV;
+        return true;
+    }
     if (!strcmp("vkCmdSetExclusiveScissorNV", name)) {
         *addr = (void *)CmdSetExclusiveScissorNV;
         return true;

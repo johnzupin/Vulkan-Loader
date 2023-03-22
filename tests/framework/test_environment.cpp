@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021 The Khronos Group Inc.
- * Copyright (c) 2021 Valve Corporation
- * Copyright (c) 2021 LunarG, Inc.
+ * Copyright (c) 2021-2023 The Khronos Group Inc.
+ * Copyright (c) 2021-2023 Valve Corporation
+ * Copyright (c) 2021-2023 LunarG, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and/or associated documentation files (the "Materials"), to
@@ -194,6 +194,11 @@ void InstWrapper::CheckCreate(VkResult result_to_check) {
     ASSERT_EQ(result_to_check, functions->vkCreateInstance(create_info.get(), callbacks, &inst));
 }
 
+void InstWrapper::CheckCreateWithInfo(InstanceCreateInfo& create_info, VkResult result_to_check) {
+    ASSERT_EQ(result_to_check, functions->vkCreateInstance(create_info.get(), callbacks, &inst));
+}
+
+
 std::vector<VkPhysicalDevice> InstWrapper::GetPhysDevs(uint32_t phys_dev_count, VkResult result_to_check) {
     uint32_t physical_count = phys_dev_count;
     std::vector<VkPhysicalDevice> physical_devices;
@@ -296,7 +301,8 @@ bool FindPrefixPostfixStringOnLine(DebugUtilsLogger const& env_log, const char* 
     return env_log.find_prefix_then_postfix(prefix, postfix);
 }
 
-PlatformShimWrapper::PlatformShimWrapper(std::vector<fs::FolderManager>* folders, bool enable_log) noexcept {
+PlatformShimWrapper::PlatformShimWrapper(std::vector<fs::FolderManager>* folders, bool enable_log) noexcept
+    : loader_logging{"VK_LOADER_DEBUG"} {
 #if defined(WIN32) || defined(__APPLE__)
     shim_library = LibraryWrapper(SHIM_LIBRARY_NAME);
     PFN_get_platform_shim get_platform_shim_func = shim_library.get_symbol(GET_PLATFORM_SHIM_STR);
@@ -308,7 +314,7 @@ PlatformShimWrapper::PlatformShimWrapper(std::vector<fs::FolderManager>* folders
     platform_shim->reset();
 
     if (enable_log) {
-        set_env_var("VK_LOADER_DEBUG", "all");
+        loader_logging.set_new_value("all");
     }
 }
 
@@ -349,7 +355,12 @@ fs::path TestLayerHandle::get_layer_manifest_path() noexcept { return manifest_p
 FrameworkEnvironment::FrameworkEnvironment() noexcept : FrameworkEnvironment(true, true) {}
 FrameworkEnvironment::FrameworkEnvironment(bool enable_log) noexcept : FrameworkEnvironment(enable_log, true) {}
 FrameworkEnvironment::FrameworkEnvironment(bool enable_log, bool set_default_search_paths) noexcept
-    : platform_shim(&folders, enable_log), vulkan_functions() {
+    : platform_shim(&folders, enable_log),
+      vulkan_functions(),
+      env_var_vk_icd_filenames("VK_DRIVER_FILES"),
+      add_env_var_vk_icd_filenames("VK_ADD_DRIVER_FILES"),
+      env_var_vk_layer_paths("VK_LAYER_PATH"),
+      add_env_var_vk_layer_paths("VK_ADD_LAYER_PATH") {
     // This order is important, it matches the enum ManifestLocation, used to index the folders vector
     folders.emplace_back(FRAMEWORK_BUILD_DIRECTORY, std::string("null_dir"));
     folders.emplace_back(FRAMEWORK_BUILD_DIRECTORY, std::string("icd_manifests"));
@@ -377,7 +388,7 @@ FrameworkEnvironment::FrameworkEnvironment(bool enable_log, bool set_default_sea
 #endif
 }
 
-void FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcept {
+TestICDHandle& FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcept {
     size_t cur_icd_index = icds.size();
     fs::FolderManager* folder = &get_folder(ManifestLocation::driver);
     if (icd_details.discovery_type == ManifestDiscoveryType::env_var ||
@@ -390,6 +401,10 @@ void FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcept {
     if (icd_details.discovery_type == ManifestDiscoveryType::macos_bundle) {
         folder = &get_folder(ManifestLocation::macos_bundle);
     }
+    if (icd_details.discovery_type == ManifestDiscoveryType::null_dir ||
+        icd_details.discovery_type == ManifestDiscoveryType::none) {
+        folder = &get_folder(ManifestLocation::null);
+    }
     if (!icd_details.is_fake) {
         fs::path new_driver_name = fs::path(icd_details.icd_manifest.lib_path).stem() + "_" + std::to_string(cur_icd_index) +
                                    fs::path(icd_details.icd_manifest.lib_path).extension();
@@ -400,42 +415,36 @@ void FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcept {
         icds.back().reset_icd();
         icd_details.icd_manifest.lib_path = new_driver_location.str();
     }
-    std::string full_json_name = icd_details.json_name;
-    if (!icd_details.disable_icd_inc) {
-        full_json_name += "_" + std::to_string(cur_icd_index);
-    }
-    full_json_name += ".json";
-
-    icds.back().manifest_path = folder->write_manifest(full_json_name, icd_details.icd_manifest.get_manifest_str());
-    switch (icd_details.discovery_type) {
-        default:
-        case (ManifestDiscoveryType::generic):
-            platform_shim->add_manifest(ManifestCategory::icd, icds.back().manifest_path);
-            break;
-        case (ManifestDiscoveryType::env_var):
-            if (!env_var_vk_icd_filenames.empty()) {
-                env_var_vk_icd_filenames += OS_ENV_VAR_LIST_SEPARATOR;
-            }
-            env_var_vk_icd_filenames += (folder->location() / full_json_name).str();
-            set_env_var("VK_DRIVER_FILES", env_var_vk_icd_filenames);
-            break;
-        case (ManifestDiscoveryType::add_env_var):
-            if (!add_env_var_vk_icd_filenames.empty()) {
-                add_env_var_vk_icd_filenames += OS_ENV_VAR_LIST_SEPARATOR;
-            }
-            add_env_var_vk_icd_filenames += (folder->location() / full_json_name).str();
-            set_env_var("VK_ADD_DRIVER_FILES", add_env_var_vk_icd_filenames);
-            break;
-        case (ManifestDiscoveryType::macos_bundle):
-            platform_shim->add_manifest(ManifestCategory::icd, icds.back().manifest_path);
-        case (ManifestDiscoveryType::none):
-            break;
+    if (icd_details.discovery_type != ManifestDiscoveryType::none) {
+        std::string full_json_name = icd_details.json_name;
+        if (!icd_details.disable_icd_inc) {
+            full_json_name += "_" + std::to_string(cur_icd_index);
+        }
+        full_json_name += ".json";
+        icds.back().manifest_path = folder->write_manifest(full_json_name, icd_details.icd_manifest.get_manifest_str());
+        switch (icd_details.discovery_type) {
+            default:
+            case (ManifestDiscoveryType::generic):
+                platform_shim->add_manifest(ManifestCategory::icd, icds.back().manifest_path);
+                break;
+            case (ManifestDiscoveryType::env_var):
+                env_var_vk_icd_filenames.add_to_list((folder->location() / full_json_name).str());
+                break;
+            case (ManifestDiscoveryType::add_env_var):
+                add_env_var_vk_icd_filenames.add_to_list((folder->location() / full_json_name).str());
+                break;
+            case (ManifestDiscoveryType::macos_bundle):
+                platform_shim->add_manifest(ManifestCategory::icd, icds.back().manifest_path);
+            case (ManifestDiscoveryType::null_dir):
+                break;
 #ifdef _WIN32
-        case (ManifestDiscoveryType::windows_app_package):
-            platform_shim->set_app_package_path(folder->location());
-            break;
+            case (ManifestDiscoveryType::windows_app_package):
+                platform_shim->set_app_package_path(folder->location());
+                break;
 #endif
+        }
     }
+    return icds.back();
 }
 
 void FrameworkEnvironment::add_implicit_layer(ManifestLayer layer_manifest, const std::string& json_name) noexcept {
@@ -466,24 +475,16 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
             break;
         case (ManifestDiscoveryType::env_var):
             fs_ptr = &get_folder(ManifestLocation::explicit_layer_env_var);
-            if (!env_var_vk_layer_paths.empty()) {
-                env_var_vk_layer_paths += OS_ENV_VAR_LIST_SEPARATOR;
-            }
             if (layer_details.is_dir) {
-                env_var_vk_layer_paths += fs_ptr->location().str();
+                env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
             } else {
-                env_var_vk_layer_paths += fs_ptr->location().str() + OS_ENV_VAR_LIST_SEPARATOR + layer_details.json_name;
+                env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
+                env_var_vk_layer_paths.add_to_list(layer_details.json_name);
             }
-            env_var_vk_layer_paths += fs_ptr->location().str();
-            set_env_var("VK_LAYER_PATH", env_var_vk_layer_paths);
             break;
         case (ManifestDiscoveryType::add_env_var):
             fs_ptr = &get_folder(ManifestLocation::explicit_layer_add_env_var);
-            if (!add_env_var_vk_layer_paths.empty()) {
-                add_env_var_vk_layer_paths += OS_ENV_VAR_LIST_SEPARATOR;
-            }
-            add_env_var_vk_layer_paths += fs_ptr->location().str();
-            set_env_var("VK_ADD_LAYER_PATH", add_env_var_vk_layer_paths);
+            add_env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
             break;
         case (ManifestDiscoveryType::override_folder):
             fs_ptr = &get_folder(ManifestLocation::override_layer);
@@ -492,6 +493,8 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
             fs_ptr = &(get_folder(ManifestLocation::macos_bundle));
             break;
         case (ManifestDiscoveryType::none):
+        case (ManifestDiscoveryType::null_dir):
+            fs_ptr = &(get_folder(ManifestLocation::null));
             break;
     }
     auto& folder = *fs_ptr;
@@ -587,6 +590,7 @@ const char* get_platform_wsi_extension(const char* api_selection) {
 void setup_WSI_in_ICD(TestICD& icd, const char* api_selection) {
     icd.enable_icd_wsi = true;
     icd.add_instance_extensions({"VK_KHR_surface", get_platform_wsi_extension(api_selection)});
+    icd.min_icd_interface_version = std::max(icd.min_icd_interface_version, 3U);
 }
 void setup_WSI_in_create_instance(InstWrapper& inst, const char* api_selection) {
     inst.create_info.add_extensions({"VK_KHR_surface", get_platform_wsi_extension(api_selection)});
@@ -606,7 +610,7 @@ testing::AssertionResult create_surface(InstWrapper& inst, VkSurfaceKHR& surface
                                                                                                "vkCreateAndroidSurfaceKHR");
 #elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
     return create_surface_helper<PFN_vkCreateDirectFBSurfaceEXT, VkDirectFBSurfaceCreateInfoEXT>(inst, surface,
-                                                                                                 "vkCreateDirectFBSurfaceEXT")
+                                                                                                 "vkCreateDirectFBSurfaceEXT");
 #elif defined(VK_USE_PLATFORM_FUCHSIA)
     return create_surface_helper<PFN_vkCreateImagePipeSurfaceFUCHSIA, VkImagePipeSurfaceCreateInfoFUCHSIA>(
         inst, surface, "vkCreateImagePipeSurfaceFUCHSIA");

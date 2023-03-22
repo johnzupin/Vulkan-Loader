@@ -1,7 +1,7 @@
 # ~~~
-# Copyright (c) 2014-2021 The Khronos Group Inc.
-# Copyright (c) 2014-2021 Valve Corporation
-# Copyright (c) 2014-2021 LunarG, Inc.
+# Copyright (c) 2014-2023 The Khronos Group Inc.
+# Copyright (c) 2014-2023 Valve Corporation
+# Copyright (c) 2014-2023 LunarG, Inc.
 # Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,27 +65,24 @@ if(WIN32)
     separate_arguments(MODIFIED_C_FLAGS_DEBUG WINDOWS_COMMAND ${MODIFIED_C_FLAGS_DEBUG})
 
     # ~~~
-    # Setup the loader.rc flie to contain the correct info
-    # Optionally uses the BUILD_DLL_VERSIONINFO build option to allow setting the exact build version
-    # Adds "Dev Build" to any build without the BUILD_DLL_VERSIONINFO option set
+    # Only generate the loader.rc file with CMake if BUILD_DLL_VERSIONINFO was set.
+    # This feature is for the Vulkan Runtime build
+    # Otherwise rely on the checked in loader.rc from the python script
     # ~~~
-    if ("$CACHE{BUILD_DLL_VERSIONINFO}" STREQUAL "")
-        # default case - use 0 as the BUILDNO
-        set(LOADER_RC_VERSION "1.0.1111.2222")
-        set(LOADER_VER_FILE_VERSION_STR "\"${LOADER_RC_VERSION}.Dev Build\"")
-        set(LOADER_VER_FILE_DESCRIPTION_STR "\"Vulkan Loader - Dev Build\"")
-    else()
+    if (NOT "$CACHE{BUILD_DLL_VERSIONINFO}" STREQUAL "")
+        string(TIMESTAMP CURRENT_YEAR "%Y")
+        set(LOADER_CUR_COPYRIGHT_YEAR "${CURRENT_YEAR}")
         set(LOADER_RC_VERSION "$CACHE{BUILD_DLL_VERSIONINFO}")
         set(LOADER_VER_FILE_VERSION_STR "\"${LOADER_RC_VERSION}\"")
         set(LOADER_VER_FILE_DESCRIPTION_STR "\"Vulkan Loader\"")
+
+        # RC file wants the value of FILEVERSION to separated by commas
+        string(REPLACE "." ", " LOADER_VER_FILE_VERSION "${LOADER_RC_VERSION}")
+
+        # Configure the file to include the versioning info
+        # Place it in the build directory - the GN build will use the checked in file
+        configure_file(loader.rc.in ${CMAKE_CURRENT_BINARY_DIR}/loader.rc)
     endif()
-
-    # RC file wants the value of FILEVERSION to separated by commas
-    string(REPLACE "." ", " LOADER_VER_FILE_VERSION "${LOADER_RC_VERSION}")
-
-    # Configure the file to include the versioning info
-    # Place it in the current directory for check-in - so the GN build has up to date info
-    configure_file(loader.rc.in ${CMAKE_CURRENT_LIST_DIR}/loader.rc)
 else()
     # Used to make alloca() and secure_getenv() available
     target_compile_definitions(loader_specific_options INTERFACE _GNU_SOURCE)
@@ -267,12 +264,18 @@ if(WIN32)
     add_dependencies(loader-opt loader_asm_gen_files)
     set_target_properties(loader-opt PROPERTIES CMAKE_C_FLAGS_DEBUG "${MODIFIED_C_FLAGS_DEBUG}")
 
+    # If BUILD_DLL_VERSIONINFO was set, use the loader.rc in the build dir, otherwise use the checked in file
+    set(RC_FILE_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/loader.rc)
+    if (NOT "$CACHE{BUILD_DLL_VERSIONINFO}" STREQUAL "")
+        set(RC_FILE_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/loader.rc)
+    endif()
+
     add_library(vulkan
                 SHARED
                 ${NORMAL_LOADER_SRCS}
                 $<TARGET_OBJECTS:loader-unknown-chain>
                 ${CMAKE_CURRENT_SOURCE_DIR}/vulkan-1.def
-                ${CMAKE_CURRENT_LIST_DIR}/loader.rc)
+                ${RC_FILE_LOCATION})
 
     target_link_libraries(vulkan PRIVATE loader_specific_options loader-opt)
 
@@ -312,10 +315,22 @@ else()
     add_dependencies(vulkan loader_asm_gen_files)
     set_target_properties(vulkan
                           PROPERTIES SOVERSION "1"
-                          VERSION ${LOADER_GENERATED_HEADER_VERSION})
+                          VERSION ${VULKAN_LOADER_VERSION})
     target_link_libraries(vulkan PRIVATE ${CMAKE_DL_LIBS} m)
     if (NOT ANDROID)
         target_link_libraries(vulkan PRIVATE Threads::Threads)
+    endif()
+
+    if (LOADER_ENABLE_ADDRESS_SANITIZER)
+        target_compile_options(vulkan PUBLIC -fsanitize=address)
+        target_link_options(vulkan PUBLIC -fsanitize=address)
+        if (LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING)
+            target_compile_definitions(vulkan PRIVATE LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING=1)
+        endif()
+    endif()
+    if (LOADER_ENABLE_THREAD_SANITIZER)
+        target_compile_options(vulkan PUBLIC -fsanitize=thread)
+        target_link_options(vulkan PUBLIC -fsanitize=thread)
     endif()
 
     if(APPLE)
@@ -325,13 +340,8 @@ else()
         # Build vulkan.framework
         # Use GLOB_RECURSE to find all the header files and populate the vulkan.framework headers with them
         # Use CONFIGURE_DEPENDS to ensure that if the header files are updated, this list is also updated
-        # Note: CONFIGURE_DEPENDS is a 3.12 feature - gate it for now and remove when CMake minimum version is higher
         get_target_property(VulkanHeaders_INCLUDE_DIRS Vulkan::Headers INTERFACE_INCLUDE_DIRECTORIES)
-        if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
-            file(GLOB_RECURSE CONFIGURE_DEPENDS FRAMEWORK_HEADERS ${VulkanHeaders_INCLUDE_DIRS})
-        else()
-            file(GLOB_RECURSE FRAMEWORK_HEADERS ${VulkanHeaders_INCLUDE_DIRS})
-        endif()
+        file(GLOB_RECURSE CONFIGURE_DEPENDS FRAMEWORK_HEADERS ${VulkanHeaders_INCLUDE_DIRS})
         if(BUILD_STATIC_LOADER)
             add_library(vulkan-framework STATIC ${NORMAL_LOADER_SRCS} ${OPT_LOADER_SRCS} ${FRAMEWORK_HEADERS})
         else()
@@ -351,7 +361,7 @@ else()
             OUTPUT_NAME vulkan
             FRAMEWORK TRUE
             FRAMEWORK_VERSION A
-            VERSION "${LOADER_GENERATED_HEADER_VERSION}" # "current generated version"
+            VERSION "${VULKAN_LOADER_VERSION}" # "current generated version"
             SOVERSION "1.0.0"                  # "compatibility version"
             MACOSX_FRAMEWORK_IDENTIFIER com.lunarg.vulkanFramework
             PUBLIC_HEADER "${FRAMEWORK_HEADERS}"
@@ -375,7 +385,6 @@ endif()
 # Generate pkg-config file.
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
-    set(VK_API_VERSION "${LOADER_GENERATED_HEADER_VERSION}")
     set(PRIVATE_LIBS "")
     if (APPLE AND BUILD_STATIC_LOADER)
         # Libs.private should only be present when building a static loader
@@ -408,6 +417,7 @@ if(PKG_CONFIG_FOUND)
         file(RELATIVE_PATH CMAKE_INSTALL_REL_LIBDIR_PC ${CMAKE_INSTALL_PREFIX} ${CMAKE_INSTALL_FULL_LIBDIR_PC})
         file(RELATIVE_PATH CMAKE_INSTALL_REL_INCLUDEDIR_PC ${CMAKE_INSTALL_PREFIX} ${CMAKE_INSTALL_FULL_INCLUDEDIR})
     endif()
+    set(VULKAN_LOADER_PKG_CONFIG_NAME "Vulkan-Loader")
     configure_file("vulkan.pc.in" "vulkan.pc" @ONLY)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/vulkan.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 endif()
