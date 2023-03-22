@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2021-2022 The Khronos Group Inc.
- * Copyright (c) 2021-2022 Valve Corporation
- * Copyright (c) 2021-2022 LunarG, Inc.
+ * Copyright (c) 2021-2023 The Khronos Group Inc.
+ * Copyright (c) 2021-2023 Valve Corporation
+ * Copyright (c) 2021-2023 LunarG, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and/or associated documentation files (the "Materials"), to
@@ -189,11 +189,11 @@ TEST(EnumerateInstanceExtensionProperties, UsageChecks) {
     env.reset_icd().add_instance_extensions({first_ext, second_ext});
 
     {  // One Pass
-        uint32_t extension_count = 5;
-        std::array<VkExtensionProperties, 5> extensions;
+        uint32_t extension_count = 6;
+        std::array<VkExtensionProperties, 6> extensions;
         ASSERT_EQ(VK_SUCCESS,
                   env.vulkan_functions.vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data()));
-        ASSERT_EQ(extension_count, 5U);  // return debug report & debug utils & portability enumeration + our two extensions
+        ASSERT_EQ(extension_count, 6U);  // default extensions + our two extensions
 
         // loader always adds the debug report & debug utils extensions
         ASSERT_TRUE(first_ext.extensionName == extensions[0].extensionName);
@@ -204,13 +204,13 @@ TEST(EnumerateInstanceExtensionProperties, UsageChecks) {
     }
     {  // Two Pass
         uint32_t extension_count = 0;
-        std::array<VkExtensionProperties, 5> extensions;
+        std::array<VkExtensionProperties, 6> extensions;
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr));
-        ASSERT_EQ(extension_count, 5U);  // return debug report & debug utils + our two extensions
+        ASSERT_EQ(extension_count, 6U);  // return default extensions + our extension
 
         ASSERT_EQ(VK_SUCCESS,
                   env.vulkan_functions.vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data()));
-        ASSERT_EQ(extension_count, 5U);
+        ASSERT_EQ(extension_count, 6U);
         // loader always adds the debug report & debug utils extensions
         ASSERT_TRUE(first_ext.extensionName == extensions[0].extensionName);
         ASSERT_TRUE(second_ext.extensionName == extensions[1].extensionName);
@@ -225,10 +225,10 @@ TEST(EnumerateInstanceExtensionProperties, PropertyCountLessThanAvailable) {
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
 
     uint32_t extension_count = 0;
-    std::array<VkExtensionProperties, 2> extensions;
+    std::array<VkExtensionProperties, 4> extensions;
     {  // use nullptr for null string
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr));
-        ASSERT_EQ(extension_count, 3U);  // return debug report & debug utils & portability enumeration
+        ASSERT_EQ(extension_count, 4U);  // return debug report & debug utils & portability enumeration & direct driver loading
         extension_count = 1;             // artificially remove one extension
 
         ASSERT_EQ(VK_INCOMPLETE,
@@ -239,7 +239,7 @@ TEST(EnumerateInstanceExtensionProperties, PropertyCountLessThanAvailable) {
     }
     {  // use "" for null string
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties("", &extension_count, nullptr));
-        ASSERT_EQ(extension_count, 3U);  // return debug report & debug utils & portability enumeration
+        ASSERT_EQ(extension_count, 4U);  // return debug report & debug utils & portability enumeration & direct driver loading
         extension_count = 1;             // artificially remove one extension
 
         ASSERT_EQ(VK_INCOMPLETE,
@@ -260,26 +260,27 @@ TEST(EnumerateInstanceExtensionProperties, FilterUnkownInstanceExtensions) {
     {
         uint32_t extension_count = 0;
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties("", &extension_count, nullptr));
-        ASSERT_EQ(extension_count, 3U);  // return debug report & debug utils & portability enumeration
+        ASSERT_EQ(extension_count, 4U);  // debug report & debug utils & portability enumeration & direct driver loading
 
-        std::array<VkExtensionProperties, 3> extensions;
+        std::array<VkExtensionProperties, 4> extensions;
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties("", &extension_count, extensions.data()));
-        ASSERT_EQ(extension_count, 3U);
+        ASSERT_EQ(extension_count, 4U);  // debug report & debug utils & portability enumeration & direct driver loading
         // loader always adds the debug report & debug utils extensions
         ASSERT_TRUE(string_eq(extensions[0].extensionName, "VK_EXT_debug_report"));
         ASSERT_TRUE(string_eq(extensions[1].extensionName, "VK_EXT_debug_utils"));
         ASSERT_TRUE(string_eq(extensions[2].extensionName, "VK_KHR_portability_enumeration"));
+        ASSERT_TRUE(string_eq(extensions[3].extensionName, "VK_LUNARG_direct_driver_loading"));
     }
     {  // Disable unknown instance extension filtering
-        set_env_var("VK_LOADER_DISABLE_INST_EXT_FILTER", "1");
+        EnvVarWrapper disable_inst_ext_filter_env_var{"VK_LOADER_DISABLE_INST_EXT_FILTER", "1"};
 
         uint32_t extension_count = 0;
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties("", &extension_count, nullptr));
-        ASSERT_EQ(extension_count, 5U);
+        ASSERT_EQ(extension_count, 6U);
 
-        std::array<VkExtensionProperties, 5> extensions;
+        std::array<VkExtensionProperties, 6> extensions;
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties("", &extension_count, extensions.data()));
-        ASSERT_EQ(extension_count, 5U);
+        ASSERT_EQ(extension_count, 6U);
 
         ASSERT_EQ(extensions[0], first_ext.get());
         ASSERT_EQ(extensions[1], second_ext.get());
@@ -287,6 +288,7 @@ TEST(EnumerateInstanceExtensionProperties, FilterUnkownInstanceExtensions) {
         ASSERT_TRUE(string_eq(extensions[2].extensionName, "VK_EXT_debug_report"));
         ASSERT_TRUE(string_eq(extensions[3].extensionName, "VK_EXT_debug_utils"));
         ASSERT_TRUE(string_eq(extensions[4].extensionName, "VK_KHR_portability_enumeration"));
+        ASSERT_TRUE(string_eq(extensions[5].extensionName, "VK_LUNARG_direct_driver_loading"));
     }
 }
 
@@ -963,6 +965,99 @@ TEST(CreateDevice, LayersNotPresent) {
 
     DeviceWrapper dev{inst};
     dev.create_info.add_layer("NotPresent").add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
+
+    dev.CheckCreate(phys_dev);
+}
+
+// Device layers are deprecated.
+// Ensure that no error occur if instance and device are created with the same list of layers.
+// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#extendingvulkan-layers-devicelayerdeprecation
+TEST(CreateDevice, MatchInstanceAndDeviceLayers) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+    env.get_test_icd().physical_devices.emplace_back("physical_device_0");
+
+    const char* layer_name = "TestLayer";
+    env.add_explicit_layer(
+        ManifestLayer{}.add_layer(
+            ManifestLayer::LayerDescription{}.set_name(layer_name).set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)),
+        "test_layer.json");
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.add_layer(layer_name);
+    inst.CheckCreate();
+
+    VkPhysicalDevice phys_dev = inst.GetPhysDev();
+
+    DeviceWrapper dev{inst};
+    dev.create_info.add_layer(layer_name).add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
+
+    dev.CheckCreate(phys_dev);
+}
+
+// Device layers are deprecated.
+// Ensure that a message is generated when instance and device are created with different list of layers.
+// At best , the user can list only instance layers in the device layer list
+// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#extendingvulkan-layers-devicelayerdeprecation
+TEST(CreateDevice, UnmatchInstanceAndDeviceLayers) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+    env.get_test_icd().physical_devices.emplace_back("physical_device_0");
+
+    const char* layer_name = "TestLayer";
+    env.add_explicit_layer(
+        ManifestLayer{}.add_layer(
+            ManifestLayer::LayerDescription{}.set_name(layer_name).set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)),
+        "test_layer.json");
+
+    DebugUtilsLogger debug_log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, debug_log);
+    inst.CheckCreate();
+
+    DebugUtilsWrapper log{inst, VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT};
+    CreateDebugUtilsMessenger(log);
+
+    VkPhysicalDevice phys_dev = inst.GetPhysDev();
+
+    DeviceWrapper dev{inst};
+    dev.create_info.add_layer(layer_name).add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
+
+    dev.CheckCreate(phys_dev);
+
+    ASSERT_TRUE(
+        log.find("loader_create_device_chain: Using deprecated and ignored 'ppEnabledLayerNames' member of 'VkDeviceCreateInfo' "
+                 "when creating a Vulkan device."));
+}
+
+// Device layers are deprecated.
+// Ensure that when VkInstanceCreateInfo is deleted, the check of the instance layer lists is running correctly during VkDevice
+// creation
+// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#extendingvulkan-layers-devicelayerdeprecation
+TEST(CreateDevice, CheckCopyOfInstanceLayerNames) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+    env.get_test_icd().physical_devices.emplace_back("physical_device_0");
+
+    const char* layer_name = "TestLayer";
+    env.add_explicit_layer(
+        ManifestLayer{}.add_layer(
+            ManifestLayer::LayerDescription{}.set_name(layer_name).set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)),
+        "test_layer.json");
+
+    InstWrapper inst{env.vulkan_functions};
+    {
+        // We intentionally create a local InstanceCreateInfo that goes out of scope at the } so that when dev.CheckCreate is called
+        // the layer name pointers are no longer valid
+        InstanceCreateInfo create_info{};
+        create_info.add_layer(layer_name);
+        inst.CheckCreateWithInfo(create_info);
+    }
+
+    VkPhysicalDevice phys_dev = inst.GetPhysDev();
+
+    DeviceWrapper dev{inst};
+    dev.create_info.add_layer(layer_name).add_device_queue(DeviceQueueCreateInfo{}.add_priority(0.0f));
 
     dev.CheckCreate(phys_dev);
 }
@@ -1860,7 +1955,7 @@ TEST(EnumeratePhysicalDeviceGroups, CallThriceAddGroupInBetween) {
         for (uint32_t group2 = 0; group2 < group_props_after.size(); ++group2) {
             if (group_props_before[group1].physicalDeviceCount == group_props_after[group2].physicalDeviceCount) {
                 uint32_t found_count = 0;
-                bool found;
+                bool found = false;
                 for (uint32_t dev1 = 0; dev1 < group_props_before[group1].physicalDeviceCount; ++dev1) {
                     found = false;
                     for (uint32_t dev2 = 0; dev2 < group_props_after[group2].physicalDeviceCount; ++dev2) {
@@ -1945,7 +2040,7 @@ TEST(EnumeratePhysicalDeviceGroups, CallTwiceRemoveGroupInBetween) {
         for (uint32_t group2 = 0; group2 < group_props_before.size(); ++group2) {
             if (group_props_after[group1].physicalDeviceCount == group_props_before[group2].physicalDeviceCount) {
                 uint32_t found_count = 0;
-                bool found;
+                bool found = false;
                 for (uint32_t dev1 = 0; dev1 < group_props_after[group1].physicalDeviceCount; ++dev1) {
                     found = false;
                     for (uint32_t dev2 = 0; dev2 < group_props_before[group2].physicalDeviceCount; ++dev2) {
@@ -2027,7 +2122,7 @@ TEST(EnumeratePhysicalDeviceGroups, CallTwiceAddDeviceInBetween) {
     for (uint32_t group1 = 0; group1 < group_props_before.size(); ++group1) {
         for (uint32_t group2 = 0; group2 < group_props_after.size(); ++group2) {
             uint32_t found_count = 0;
-            bool found;
+            bool found = false;
             for (uint32_t dev1 = 0; dev1 < group_props_before[group1].physicalDeviceCount; ++dev1) {
                 found = false;
                 for (uint32_t dev2 = 0; dev2 < group_props_after[group2].physicalDeviceCount; ++dev2) {
@@ -2122,7 +2217,7 @@ TEST(EnumeratePhysicalDeviceGroups, CallTwiceRemoveDeviceInBetween) {
     for (uint32_t group1 = 0; group1 < group_props_after.size(); ++group1) {
         for (uint32_t group2 = 0; group2 < group_props_before.size(); ++group2) {
             uint32_t found_count = 0;
-            bool found;
+            bool found = false;
             for (uint32_t dev1 = 0; dev1 < group_props_after[group1].physicalDeviceCount; ++dev1) {
                 found = false;
                 for (uint32_t dev2 = 0; dev2 < group_props_before[group2].physicalDeviceCount; ++dev2) {
@@ -2814,8 +2909,7 @@ TEST(SortedPhysicalDevices, DevicesSortEnabled11) {
 TEST(SortedPhysicalDevices, DevicesSortedDisabled) {
     FrameworkEnvironment env{};
 
-    set_env_var("VK_LOADER_DISABLE_SELECT", "1");
-    EnvVarCleaner disable_select_cleaner("VK_LOADER_DISABLE_SELECT");
+    EnvVarWrapper disable_select_env_var{"VK_LOADER_DISABLE_SELECT", "1"};
 
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2, VK_API_VERSION_1_0));
     env.get_test_icd(0).add_instance_extension({VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME});
@@ -3107,8 +3201,7 @@ TEST(SortedPhysicalDevices, DeviceGroupsSortedEnabled) {
 TEST(SortedPhysicalDevices, DeviceGroupsSortedDisabled) {
     FrameworkEnvironment env{};
 
-    set_env_var("VK_LOADER_DISABLE_SELECT", "1");
-    EnvVarCleaner disable_select_cleaner("VK_LOADER_DISABLE_SELECT");
+    EnvVarWrapper disable_select_env_var{"VK_LOADER_DISABLE_SELECT", "1"};
 
     // ICD 0: Vulkan 1.1
     //   PhysDev 0: pd0, Discrete, Vulkan 1.1, Bus 7
@@ -3472,19 +3565,21 @@ TEST(PortabilityICDConfiguration, PortabilityAndRegularICDPreInstanceFunctions) 
     {
         // check that enumerating instance extensions work with a portability driver present
         uint32_t extension_count = 0;
-        std::array<VkExtensionProperties, 5> extensions;
+        std::array<VkExtensionProperties, 6> extensions;
         ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr));
-        ASSERT_EQ(extension_count, 5U);  // return debug report & debug utils + our two extensions
+        // loader always adds the debug report, debug utils extensions, portability enumeration, direct driver loading
+        ASSERT_EQ(extension_count, 6U);
 
         ASSERT_EQ(VK_SUCCESS,
                   env.vulkan_functions.vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data()));
-        ASSERT_EQ(extension_count, 5U);
-        // loader always adds the debug report & debug utils extensions
+        ASSERT_EQ(extension_count, 6U);
+        // loader always adds the debug report, debug utils extensions, portability enumeration, direct driver loading
         ASSERT_TRUE(first_ext.extensionName == extensions[0].extensionName);
         ASSERT_TRUE(second_ext.extensionName == extensions[1].extensionName);
         ASSERT_TRUE(string_eq("VK_EXT_debug_report", extensions[2].extensionName));
         ASSERT_TRUE(string_eq("VK_EXT_debug_utils", extensions[3].extensionName));
         ASSERT_TRUE(string_eq("VK_KHR_portability_enumeration", extensions[4].extensionName));
+        ASSERT_TRUE(string_eq("VK_LUNARG_direct_driver_loading", extensions[5].extensionName));
     }
 
     const char* layer_name = "TestLayer";
@@ -3555,7 +3650,7 @@ TEST(DuplicateRegistryEntries, Drivers) {
     auto null_path = env.get_folder(ManifestLocation::null).location() / "test_icd_0.json";
     env.platform_shim->add_manifest(ManifestCategory::icd, null_path.str());
 
-    env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA}.set_discovery_type(ManifestDiscoveryType::none));
+    env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA}.set_discovery_type(ManifestDiscoveryType::null_dir));
     auto& driver = env.get_test_icd();
     driver.physical_devices.emplace_back("physical_device_0");
     driver.adapterLUID = _LUID{10, 1000};
@@ -3574,7 +3669,8 @@ TEST(DuplicateRegistryEntries, Drivers) {
 // Check that valid symlinks do not cause the loader to crash when directly in an XDG env-var
 TEST(ManifestDiscovery, ValidSymlinkInXDGEnvVar) {
     FrameworkEnvironment env{true, false};
-    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::none));
+    env.add_icd(
+        TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::override_folder));
     env.get_test_icd().physical_devices.push_back({});
     auto driver_path = env.get_icd_manifest_path(0);
     std::string symlink_name = "symlink_to_driver.json";
@@ -3582,7 +3678,7 @@ TEST(ManifestDiscovery, ValidSymlinkInXDGEnvVar) {
     env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
     int res = symlink(driver_path.c_str(), symlink_path.c_str());
     ASSERT_EQ(res, 0);
-    set_env_var("XDG_CONFIG_DIRS", symlink_path.str());
+    EnvVarWrapper xdg_config_dirs_env_var{"XDG_CONFIG_DIRS", symlink_path.str()};
 
     InstWrapper inst{env.vulkan_functions};
     FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
@@ -3592,7 +3688,8 @@ TEST(ManifestDiscovery, ValidSymlinkInXDGEnvVar) {
 // Check that valid symlinks do not cause the loader to crash
 TEST(ManifestDiscovery, ValidSymlink) {
     FrameworkEnvironment env{true, false};
-    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::none));
+    env.add_icd(
+        TestICDDetails(TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA).set_discovery_type(ManifestDiscoveryType::override_folder));
     env.get_test_icd().physical_devices.push_back({});
 
     auto driver_path = env.get_icd_manifest_path(0);
@@ -3619,7 +3716,7 @@ TEST(ManifestDiscovery, InvalidSymlinkXDGEnvVar) {
     ASSERT_EQ(res, 0);
     env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
 
-    set_env_var("XDG_CONFIG_DIRS", symlink_path.str());
+    EnvVarWrapper xdg_config_dirs_env_var{symlink_path.str()};
 
     InstWrapper inst{env.vulkan_functions};
     FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
