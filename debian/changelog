@@ -1,3 +1,84 @@
+vulkan-loader (1.3.243.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Charles Giessen ]
+  * Add Vulkan Loader and Driver Interface Version 7
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.239
+
+  [ Juan Ramos ]
+  * docs: Notify users about upcoming master to main change
+  * github: Use main instead of master
+
+  [ Charles Giessen ]
+  * Log when VK_LAYER_PATH is ignored
+  * Fix copyright in windows .rc file
+
+  [ Juan Ramos ]
+  * ci: Fix CI warnings
+
+  [ Charles Giessen ]
+  * Re-checking loader.rc file
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.240
+  * ci: Update GN toolchain
+
+  [ Juan Ramos ]
+  * cmake: Update minimum to 3.17.2
+  * ci: Fix GitHub warnigs about setup-python@v2
+  * cmake: Add scripts/CMakeLists.txt
+  * cmake: Cleanup BUILD_TESTS code
+  * cmake: Remove custom install code
+
+  [ Mike Schuchardt ]
+  * gn: Add ninja to DEPS
+
+  [ Charles Giessen ]
+  * Remove newlines in log messages
+  * Implement VK_LUNARG_direct_driver_loading
+  * Ensure VkPhysicalDevice unwrapping in Device functions
+
+  [ Ludovico de Nittis ]
+  * Clarify the VK_LOADER_DRIVERS_SELECT example
+
+  [ Juan Ramos ]
+  * cmake: Remove pointless conditionals
+  * ci: Test CMake min for Linux builds
+  * cmake: Use PkgConfig to find XCB, X11, and DirectFB
+  * cmake: Remove custom find_package code
+  * cmake: Add VULKAN_LOADER_VERSION
+
+  [ Christophe ]
+  * Warn user when using device layers field #1086
+  * Testing C.I. memory leak hypothesis
+  * gni
+  * Use calloc instead of alloc
+  * A bit more safe string copy
+  * Only allocate layers if initialization succeed
+
+  [ Charles Giessen ]
+  * Fix documentation to use the correct function name
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.241
+  * build: Update to header 1.3.242
+
+  [ Charles Giessen ]
+  * Call DestroyInstance on each driver in error path
+  * Allow the loader to enable ASAN outside of testing
+  * Set github actions to only have read only permissions
+  * Add clang-format-diff.py
+  * Make check_code_format.sh not care about includes
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.243
+
+  [ MeeSong ]
+  * Docs: Add missing ".md"
+
+ -- john <john@odin>  Wed, 22 Mar 2023 10:26:07 -0600
+
 vulkan-loader (1.3.239.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ Jan Palus ]
