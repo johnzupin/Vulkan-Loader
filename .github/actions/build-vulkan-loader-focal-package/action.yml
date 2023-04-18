@@ -1,0 +1,15 @@
+name: 'Build Vulkan-Loader Package for Ubuntu Focal'
+description: 'Build the Vulkan-Loader Package'
+inputs:
+  repo:
+    description: 'What repo to clone the Vulkan-Loader package'
+    required: true
+  ref:
+    description: 'What ref to build the Vulkan-Loader package'
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.repo }}
+    - ${{ inputs.ref }}

@@ -1,0 +1,145 @@
+name: build-focal-package
+run-name: Build Debian style packages for Ubuntu Focal (20.04)
+on:
+  push:
+  workflow_call:
+    inputs:
+      vh :
+        required: false
+        type: string
+        default: '{"repo":"","ref":""}'
+        description: "A json object that defines repo and ref. Ex) {repo:KhronosGroup/Vulkan-Headers, ref:ubuntu/focal}"
+      vl:
+        required: true
+        type: string
+        default: '{"repo":"johnzupin/Vulkan-Loader","ref":"ubuntu/focal"}'
+        description: "A json object that defines repo and ref. Ex) {repo:KhronosGroup/Vulkan-Loader, ref:ubuntu/focal}"
+  workflow_dispatch:
+    inputs:
+      vh:
+        required: false
+        type: string
+        default: '{"repo":"","ref":""}'
+        description: "A json object that defines repo and ref. Ex) {repo:KhronosGroup/Vulkan-Headers, ref:ubuntu/focal}"
+      vl:
+        required: true
+        type: string
+        default: '{"repo":"johnzupin/Vulkan-Loader","ref":"ubuntu/focal"}'
+        description: "A json object that defines repo and ref. Ex) {repo:KhronosGroup/Vulkan-Loader, ref:ubuntu/focal}"
+
+jobs:
+  get-vulkan-loader-ref:
+    runs-on: ubuntu-latest
+    outputs:
+      vh-repo: ${{ steps.deps-refs.outputs.VH_REPO }}
+      vh-ref: ${{ steps.deps-refs.outputs.VH_REF }}
+      vl-repo: ${{ steps.deps-refs.outputs.VL_REPO }}
+      vl-ref: ${{ steps.deps-refs.outputs.VL_REF }}
+    steps:
+      - name: "Inputs have been specified - Set the REPO/REF(s) from input"
+        if: ${{ inputs.vl != '' }}
+        run: |
+          echo VH_REPO="${{ fromJSON(inputs.vh).repo }}" >> "$GITHUB_ENV"
+          echo VH_REF="${{ fromJSON(inputs.vh).ref }}" >> "$GITHUB_ENV"
+          echo VL_REPO="${{ fromJSON(inputs.vl).repo }}" >> "$GITHUB_ENV"
+          echo VL_REF="${{ fromJSON(inputs.vl).ref }}" >> "$GITHUB_ENV"
+      - name: "No inputs specified - Checking out the repository to parse the know_good.json file"
+        if: ${{ inputs.vl == '' }}
+        uses: actions/checkout@v3
+      - name: "No inputs specified - building what was triggered and with dependencies from known_good.json"
+        if: ${{ inputs.vl == '' }}
+        run: |
+          # WARNING: the vulkan-headers repo is hardcoded to johnzupin org, this needs to change to Khronos when /debian gets merged
+          echo VH_REPO="johnzupin/Vulkan-Headers" >> "$GITHUB_ENV" 
+          echo VH_REF=`jq -r '.repos[0].commit' scripts/known_good.json` >> "$GITHUB_ENV"
+          echo VL_REPO="$GITHUB_REPOSITORY" >> "$GITHUB_ENV"
+          echo VL_REF="$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+      - id: deps-refs
+        run: |
+          echo VH_REPO="${{ env.VH_REPO }}" >> "$GITHUB_OUTPUT"
+          echo VH_REF="${{ env.VH_REF }}" >> "$GITHUB_OUTPUT"
+          echo VL_REPO="${{ env.VL_REPO }}" >> "$GITHUB_OUTPUT"
+          echo VL_REF="${{ env.VL_REF }}" >> "$GITHUB_OUTPUT"
+  
+  build-vulkan-headers-package:
+    needs: "get-vulkan-loader-ref"
+    if: ${{ needs.get-vulkan-loader-ref.outputs.vh-repo != '' && needs.get-vulkan-loader-ref.outputs.vh-ref != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: johnzupin/Vulkan-Headers
+          ref: zupin_js_action_deb
+      - uses: ./.github/actions/build-vulkan-headers-focal-package
+        with:
+          repo: "${{ needs.get-vulkan-loader-ref.outputs.vh-repo }}"
+          ref: "ubuntu/focal"
+          # ref: "${{ needs.get-vulkan-loader-ref.outputs.vh-ref }}"
+
+  build-vulkan-loader-amd64-focal-package:
+    needs: [ "get-vulkan-loader-ref", "build-vulkan-headers-package" ]
+    if: ${{ needs.build-vulkan-headers-package.result == 'skipped' || success() }}
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: "vulkan-headers-focal-package"
+          path: "/tmp/"
+      - run: "apt-get install -y /tmp/vulkan-headers*.deb"
+      - run: |
+          apt-get update && \
+          DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
+          git build-essential pkg-config libx11-xcb-dev \
+          libxkbcommon-dev libwayland-dev libxrandr-dev \
+          libegl1-mesa-dev python3-distutils git-buildpackage cmake \
+          python debhelper
+      - uses: actions/checkout@v3
+        with:
+          repository: "${{ needs.get-vulkan-loader-ref.outputs.vl-repo }}"
+          ref: "${{ needs.get-vulkan-loader-ref.outputs.vl-ref }}"
+      #- run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: gbp buildpackage --git-verbose --git-force-create --git-upstream-tree="branch" --git-ignore-branch --git-upstream-branch="${{ needs.get-vulkan-loader-ref.outputs.vl-ref }}" --no-sign
+      - uses: actions/upload-artifact@v3
+        with:
+          name: "vulkan-loader-focal-amd64-package"
+          path: "${{ runner.workspace }}/libvulkan*20.04*amd64.deb"
+
+  build-vulkan-loader-i386-focal-package:
+    needs: [ "get-vulkan-loader-ref", "build-vulkan-headers-package" ]
+    if: ${{ needs.build-vulkan-headers-package.result == 'skipped' || success() }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build-vulkan-loader-focal-i386-package
+        with:
+          repo: "${{ needs.get-vulkan-loader-ref.outputs.vl-repo }}"
+          ref: "${{ needs.get-vulkan-loader-ref.outputs.vl-ref }}"
+      # - run: "mkdir /tmp/bindmount/"
+      # - uses: actions/download-artifact@v3
+      #   with:
+      #     name: "vulkan-headers-focal-package"
+      #     path: "/tmp/bindmount/"
+      # - run: |
+      #     sudo apt-get update && \
+      #     sudo DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
+      #     git build-essential pkg-config libx11-xcb-dev \
+      #     libxkbcommon-dev libwayland-dev libxrandr-dev \
+      #     libegl1-mesa-dev python3-distutils git-buildpackage cmake \
+      #     python3 debhelper pbuilder
+      # - run: "sudo dpkg -i /tmp/bindmount/vulkan-headers*"
+      # - run: "cd /usr/lib/pbuilder && sudo ln -sf /usr/lib/pbuilder/pbuilder-satisfydepends-apt pbuilder-satisfydepends"
+      # - run: sudo pbuilder create --debootstrapopts --arch --debootstrapopts i386 --distribution focal --components 'main restricted universe multiverse' --mirror 'http://us.archive.ubuntu.com/ubuntu' --bindmounts /tmp/bindmount/
+      # - run: "echo -e '#!/bin/bash \ndpkg -i /tmp/bindmount/vulkan-*' >> /tmp/install.bash"
+      # - run: sudo pbuilder execute --debootstrapopts --arch --debootstrapopts i386 --distribution focal --components 'main restricted universe multiverse' --mirror 'http://us.archive.ubuntu.com/ubuntu' --bindmounts /tmp/bindmount/ --save-after-login -- /tmp/install.bash
+      # - uses: actions/checkout@v3
+      #   with:
+      #     repository: "${{ needs.get-vulkan-loader-ref.outputs.vl-repo }}"
+      #     ref: "${{ needs.get-vulkan-loader-ref.outputs.vl-ref }}"
+      # - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      # - run: sudo BUILDER=pbuilder gbp buildpackage --git-verbose --git-pbuilder --git-force-create --git-upstream-tree="branch" --git-ignore-branch --git-upstream-branch="${{ needs.get-vulkan-loader-ref.outputs.vl-ref }}" --no-sign --git-pbuilder-options='--debootstrapopts --arch --debootstrapopts i386 --distribution focal --components "main restricted universe multiverse" --mirror "http://us.archive.ubuntu.com/ubuntu"'
+      # - uses: actions/upload-artifact@v3
+      #   with:
+      #     name: "vulkan-loader-focal-i386-package"
+      #     path: "${{ runner.workspace }}/libvulkan*20.04*i386.deb"

@@ -1,0 +1,15 @@
+name: 'Build SPIRV-Loader Package for Ubuntu Jammy'
+description: 'Build the SPIRV-Loader Package'
+inputs:
+  repo:
+    description: 'What repo to clone the SPIRV-Loader package'
+    required: true
+  ref:
+    description: 'What ref to build the SPIRV-Loader package'
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.repo }}
+    - ${{ inputs.ref }}

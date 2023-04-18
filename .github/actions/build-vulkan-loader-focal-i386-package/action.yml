@@ -1,0 +1,46 @@
+name: 'Build Vulkan-Loader i386 Package for Ubuntu Focal'
+description: 'Build the Vulkan-Loader Package'
+inputs:
+  repo:
+    description: 'What repo to clone the Vulkan-Loader package'
+    required: true
+  ref:
+    description: 'What ref to build the Vulkan-Loader package'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - run: "mkdir /tmp/bindmount/"
+      shell: bash
+    - uses: actions/download-artifact@v3
+      with:
+        name: "vulkan-headers-focal-package"
+        path: "/tmp/bindmount/"
+    - run: |
+        sudo apt-get update && \
+        sudo DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
+        git build-essential pkg-config libx11-xcb-dev \
+        libxkbcommon-dev libwayland-dev libxrandr-dev \
+        libegl1-mesa-dev python3-distutils git-buildpackage cmake \
+        python3 debhelper pbuilder
+      shell: bash
+    - run: "sudo dpkg -i /tmp/bindmount/vulkan-headers*"
+      shell: bash
+    - run: "cd /usr/lib/pbuilder && sudo ln -sf /usr/lib/pbuilder/pbuilder-satisfydepends-apt pbuilder-satisfydepends"
+      shell: bash
+    - run: sudo pbuilder create --debootstrapopts --arch --debootstrapopts i386 --distribution focal --components 'main restricted universe multiverse' --mirror 'http://us.archive.ubuntu.com/ubuntu' --bindmounts /tmp/bindmount/
+      shell: bash
+    - run: "echo -e '#!/bin/bash \ndpkg -i /tmp/bindmount/vulkan-*' >> /tmp/install.bash"
+      shell: bash
+    - run: sudo pbuilder execute --debootstrapopts --arch --debootstrapopts i386 --distribution focal --components 'main restricted universe multiverse' --mirror 'http://us.archive.ubuntu.com/ubuntu' --bindmounts /tmp/bindmount/ --save-after-login -- /tmp/install.bash
+      shell: bash
+    - uses: actions/checkout@v3
+      with:
+        repository: "${{ inputs.repo }}"
+        ref: "${{ inputs.ref }}"
+    - run: sudo BUILDER=pbuilder gbp buildpackage --git-verbose --git-pbuilder --git-force-create --git-upstream-tree="branch" --git-ignore-branch --git-upstream-branch="${{ input.ref }}" --no-sign --git-pbuilder-options='--debootstrapopts --arch --debootstrapopts i386 --distribution focal --components "main restricted universe multiverse" --mirror "http://us.archive.ubuntu.com/ubuntu"'
+      shell: bash
+    - uses: actions/upload-artifact@v3
+      with:
+        name: "vulkan-loader-focal-i386-package"
+        path: "${{ runner.workspace }}/libvulkan*20.04*i386.deb"
