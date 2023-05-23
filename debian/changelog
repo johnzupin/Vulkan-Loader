@@ -1,3 +1,39 @@
+vulkan-loader (1.3.250.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Charles Giessen ]
+  * Add missing backtick in LoaderInterfaceArchitecture.md
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.244
+  * build: Update to header 1.3.245
+
+  [ Charles Giessen ]
+  * Add 4th component to version in loader.rc
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.246
+
+  [ Charles Giessen ]
+  * Make correct layer be used when duplicates are present
+  * Fix ordering regression for VK_INSTANCE_LAYERS
+  * Use Ubuntu 22 in github actions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.247
+
+  [ Charles Giessen ]
+  * Log ERROR when layers in VK_INSTANCE_LAYERS are missing
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.248
+  * build: Update to header 1.3.249
+  * build: Update to header 1.3.250
+
+  [ juan-lunarg ]
+  * docs: Update README.md
+
+ -- john <john@odin>  Tue, 23 May 2023 13:23:47 -0600
+
 vulkan-loader (1.3.243.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ Charles Giessen ]
