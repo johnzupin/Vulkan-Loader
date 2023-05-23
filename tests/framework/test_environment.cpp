@@ -198,7 +198,6 @@ void InstWrapper::CheckCreateWithInfo(InstanceCreateInfo& create_info, VkResult 
     ASSERT_EQ(result_to_check, functions->vkCreateInstance(create_info.get(), callbacks, &inst));
 }
 
-
 std::vector<VkPhysicalDevice> InstWrapper::GetPhysDevs(uint32_t phys_dev_count, VkResult result_to_check) {
     uint32_t physical_count = phys_dev_count;
     std::vector<VkPhysicalDevice> physical_devices;
@@ -375,9 +374,9 @@ FrameworkEnvironment::FrameworkEnvironment(bool enable_log, bool set_default_sea
 
     platform_shim->redirect_all_paths(get_folder(ManifestLocation::null).location());
     if (set_default_search_paths) {
-        platform_shim->set_path(ManifestCategory::icd, get_folder(ManifestLocation::driver).location());
-        platform_shim->set_path(ManifestCategory::explicit_layer, get_folder(ManifestLocation::explicit_layer).location());
-        platform_shim->set_path(ManifestCategory::implicit_layer, get_folder(ManifestLocation::implicit_layer).location());
+        platform_shim->set_fake_path(ManifestCategory::icd, get_folder(ManifestLocation::driver).location());
+        platform_shim->set_fake_path(ManifestCategory::explicit_layer, get_folder(ManifestLocation::explicit_layer).location());
+        platform_shim->set_fake_path(ManifestCategory::implicit_layer, get_folder(ManifestLocation::implicit_layer).location());
     }
 #if defined(__APPLE__)
     // Necessary since bundles look in sub folders for manifests, not the test framework folder itself
@@ -386,6 +385,14 @@ FrameworkEnvironment::FrameworkEnvironment(bool enable_log, bool set_default_sea
     platform_shim->redirect_path(bundle_location / "vulkan/explicit_layer.d", bundle_location);
     platform_shim->redirect_path(bundle_location / "vulkan/implicit_layer.d", bundle_location);
 #endif
+}
+
+FrameworkEnvironment::~FrameworkEnvironment() {
+    // This is necessary to prevent the folder manager from using dead memory during destruction.
+    // What happens is that each folder manager tries to cleanup itself. Except, folders that were never called did not have their
+    // DirEntry array's filled out. So when that folder calls delete_folder, which calls readdir, the shim tries to order the files.
+    // Except, the list of files is in a object that is currently being destroyed.
+    platform_shim->is_during_destruction = true;
 }
 
 TestICDHandle& FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcept {
@@ -429,9 +436,11 @@ TestICDHandle& FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcep
                 break;
             case (ManifestDiscoveryType::env_var):
                 env_var_vk_icd_filenames.add_to_list((folder->location() / full_json_name).str());
+                platform_shim->add_known_path(folder->location());
                 break;
             case (ManifestDiscoveryType::add_env_var):
                 add_env_var_vk_icd_filenames.add_to_list((folder->location() / full_json_name).str());
+                platform_shim->add_known_path(folder->location());
                 break;
             case (ManifestDiscoveryType::macos_bundle):
                 platform_shim->add_manifest(ManifestCategory::icd, icds.back().manifest_path);
@@ -478,13 +487,18 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
             if (layer_details.is_dir) {
                 env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
             } else {
-                env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
-                env_var_vk_layer_paths.add_to_list(layer_details.json_name);
+                env_var_vk_layer_paths.add_to_list((fs_ptr->location() / layer_details.json_name).str());
             }
+            platform_shim->add_known_path(fs_ptr->location());
             break;
         case (ManifestDiscoveryType::add_env_var):
             fs_ptr = &get_folder(ManifestLocation::explicit_layer_add_env_var);
-            add_env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
+            if (layer_details.is_dir) {
+                add_env_var_vk_layer_paths.add_to_list(fs_ptr->location().str());
+            } else {
+                add_env_var_vk_layer_paths.add_to_list((fs_ptr->location() / layer_details.json_name).str());
+            }
+            platform_shim->add_known_path(fs_ptr->location());
             break;
         case (ManifestDiscoveryType::override_folder):
             fs_ptr = &get_folder(ManifestLocation::override_layer);
@@ -500,11 +514,10 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
     auto& folder = *fs_ptr;
     size_t new_layers_start = layers.size();
     for (auto& layer : layer_details.layer_manifest.layers) {
-        size_t cur_layer_index = layers.size();
         if (!layer.lib_path.str().empty()) {
-            std::string new_layer_name = layer.name + "_" + std::to_string(cur_layer_index) + "_" + layer.lib_path.filename().str();
+            std::string layer_binary_name = layer.lib_path.filename().str() + "_" + std::to_string(layers.size());
 
-            auto new_layer_location = folder.copy_file(layer.lib_path, new_layer_name);
+            auto new_layer_location = folder.copy_file(layer.lib_path, layer_binary_name);
 
             // Don't load the layer binary if using any of the wrap objects layers, since it doesn't export the same interface
             // functions
@@ -517,8 +530,12 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
         }
     }
     if (layer_details.discovery_type != ManifestDiscoveryType::none) {
+        // Write a manifest file to a folder as long as the discovery type isn't none
         auto layer_loc = folder.write_manifest(layer_details.json_name, layer_details.layer_manifest.get_manifest_str());
-        platform_shim->add_manifest(category, layer_loc);
+        // only add the manifest to the registry if its a system location (as if it was installed)
+        if (layer_details.discovery_type == ManifestDiscoveryType::generic) {
+            platform_shim->add_manifest(category, layer_loc);
+        }
         for (size_t i = new_layers_start; i < layers.size(); i++) {
             layers.at(i).manifest_path = layer_loc;
         }

@@ -470,6 +470,7 @@ struct TestICDDetails {
     }
     BUILDER_VALUE(TestICDDetails, ManifestICD, icd_manifest, {});
     BUILDER_VALUE(TestICDDetails, std::string, json_name, "test_icd");
+    // Uses the json_name without modification - default is to append _1 in the json file to distinguish drivers
     BUILDER_VALUE(TestICDDetails, bool, disable_icd_inc, false);
     BUILDER_VALUE(TestICDDetails, ManifestDiscoveryType, discovery_type, ManifestDiscoveryType::generic);
     BUILDER_VALUE(TestICDDetails, bool, is_fake, false);
@@ -502,6 +503,7 @@ struct FrameworkEnvironment {
     FrameworkEnvironment() noexcept;  // default is to enable VK_LOADER_DEBUG=all and enable the default search paths
     FrameworkEnvironment(bool enable_log) noexcept;
     FrameworkEnvironment(bool enable_log, bool enable_default_search_paths) noexcept;
+    ~FrameworkEnvironment();
 
     TestICDHandle& add_icd(TestICDDetails icd_details) noexcept;
     void add_implicit_layer(ManifestLayer layer_manifest, const std::string& json_name) noexcept;

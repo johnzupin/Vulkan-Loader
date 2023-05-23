@@ -380,7 +380,7 @@ static struct loader_layer_properties *loader_find_layer_property(const char *na
 }
 
 // Search the given layer list for a layer matching the given layer name
-static bool loader_find_layer_name_in_list(const char *name, const struct loader_layer_list *layer_list) {
+bool loader_find_layer_name_in_list(const char *name, const struct loader_layer_list *layer_list) {
     if (NULL == layer_list) {
         return false;
     }
@@ -988,7 +988,7 @@ bool loader_implicit_layer_is_enabled(const struct loader_instance *inst, const 
 }
 
 // Check the individual implicit layer for the enable/disable environment variable settings.  Only add it after
-// every check has passed indicating it should be used.
+// every check has passed indicating it should be used, including making sure a layer of the same name hasn't already been added.
 static VkResult loader_add_implicit_layer(const struct loader_instance *inst, const struct loader_layer_properties *prop,
                                           const struct loader_envvar_filter *enable_filter,
                                           const struct loader_envvar_disable_layers_filter *disable_filter,
@@ -997,6 +997,11 @@ static VkResult loader_add_implicit_layer(const struct loader_instance *inst, co
     VkResult result = VK_SUCCESS;
     if (loader_implicit_layer_is_enabled(inst, enable_filter, disable_filter, prop)) {
         if (0 == (prop->type_flags & VK_LAYER_TYPE_FLAG_META_LAYER)) {
+            // Make sure the layer isn't already in the output_list, skip adding it if it is.
+            if (loader_find_layer_name_in_list(&prop->info.layerName[0], target_list)) {
+                return result;
+            }
+
             result = loader_add_layer_properties_to_list(inst, target_list, 1, prop);
             if (result == VK_ERROR_OUT_OF_HOST_MEMORY) return result;
             if (NULL != expanded_target_list) {
@@ -4448,9 +4453,8 @@ VkResult loader_enable_instance_layers(struct loader_instance *inst, const VkIns
     }
 
     // Add any layers specified via environment variable next
-    res = loader_add_environment_layers(inst, VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER, "VK_INSTANCE_LAYERS", &layers_enable_filter,
-                                        &layers_disable_filter, &inst->app_activated_layer_list,
-                                        &inst->expanded_activated_layer_list, instance_layers);
+    res = loader_add_environment_layers(inst, VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER, &layers_enable_filter, &layers_disable_filter,
+                                        &inst->app_activated_layer_list, &inst->expanded_activated_layer_list, instance_layers);
     if (res != VK_SUCCESS) {
         goto out;
     }
@@ -5341,8 +5345,8 @@ VkResult loader_validate_instance_extensions(struct loader_instance *inst, const
     if (res != VK_SUCCESS) {
         goto out;
     }
-    res = loader_add_environment_layers(inst, VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER, ENABLED_LAYERS_ENV, &layers_enable_filter,
-                                        &layers_disable_filter, &active_layers, &expanded_layers, instance_layers);
+    res = loader_add_environment_layers(inst, VK_LAYER_TYPE_FLAG_EXPLICIT_LAYER, &layers_enable_filter, &layers_disable_filter,
+                                        &active_layers, &expanded_layers, instance_layers);
     if (res != VK_SUCCESS) {
         goto out;
     }
