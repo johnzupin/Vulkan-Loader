@@ -98,6 +98,13 @@ struct TestICD {
     BUILDER_VALUE(TestICD, bool, enable_icd_wsi, false);
     bool is_using_icd_wsi = false;
 
+    TestICD& setup_WSI(const char* api_selection = nullptr) {
+        enable_icd_wsi = true;
+        add_instance_extensions({"VK_KHR_surface", get_platform_wsi_extension(api_selection)});
+        min_icd_interface_version = (3U < min_icd_interface_version) ? min_icd_interface_version : 3U;
+        return *this;
+    }
+
     BUILDER_VALUE(TestICD, uint32_t, icd_api_version, VK_API_VERSION_1_0)
     BUILDER_VECTOR(TestICD, LayerDefinition, instance_layers, instance_layer)
     BUILDER_VECTOR(TestICD, Extension, instance_extensions, instance_extension)
@@ -113,6 +120,8 @@ struct TestICD {
     std::vector<uint64_t> messenger_handles;
     std::vector<uint64_t> swapchain_handles;
 
+    BUILDER_VALUE(TestICD, bool, can_query_vkEnumerateInstanceVersion, true);
+
     // Unknown instance functions Add a `VulkanFunction` to this list which will be searched in
     // vkGetInstanceProcAddr for custom_instance_functions and vk_icdGetPhysicalDeviceProcAddr for
     // custom_physical_device_functions. To add unknown device functions, add it to the PhysicalDevice directly (in the
@@ -124,7 +133,7 @@ struct TestICD {
     BUILDER_VALUE(TestICD, bool, supports_tooling_info_ext, false);
     BUILDER_VALUE(TestICD, bool, supports_tooling_info_core, false);
     // List of tooling properties that this driver 'supports'
-    std::vector<VkPhysicalDeviceToolPropertiesEXT> tooling_properties;
+    BUILDER_VECTOR(TestICD, VkPhysicalDeviceToolPropertiesEXT, tooling_properties, tooling_property)
     std::vector<DispatchableHandle<VkCommandBuffer>> allocated_command_buffers;
 
     VkInstanceCreateFlags passed_in_instance_create_flags{};
