@@ -27,6 +27,20 @@
 
 #include "test_environment.h"
 
+// Makes any failed assertion throw, allowing for graceful cleanup of resources instead of hard aborts
+class ThrowListener : public testing::EmptyTestEventListener {
+    void OnTestPartResult(const testing::TestPartResult& result) override {
+        if (result.type() == testing::TestPartResult::kFatalFailure) {
+            // We need to make sure an exception wasn't already thrown so we dont throw another exception at the same time
+            std::exception_ptr ex = std::current_exception();
+            if (ex) {
+                return;
+            }
+            throw testing::AssertionException(result);
+        }
+    }
+};
+
 int main(int argc, char** argv) {
 #if defined(_WIN32)
     // Avoid "Abort, Retry, Ignore" dialog boxes
@@ -66,28 +80,17 @@ int main(int argc, char** argv) {
     EnvVarWrapper vk_loader_layers_disable_env_var{"VK_LOADER_LAYERS_DISABLE"};
     EnvVarWrapper vk_loader_debug_env_var{"VK_LOADER_DEBUG"};
     EnvVarWrapper vk_loader_disable_inst_ext_filter_env_var{"VK_LOADER_DISABLE_INST_EXT_FILTER"};
-    vk_icd_filenames_env_var.remove_value();
-    vk_driver_files_env_var.remove_value();
-    vk_add_driver_files_env_var.remove_value();
-    vk_layer_path_env_var.remove_value();
-    vk_add_layer_path_env_var.remove_value();
-    vk_instance_layers_env_var.remove_value();
-    vk_loader_drivers_select_env_var.remove_value();
-    vk_loader_drivers_disable_env_var.remove_value();
-    vk_loader_layers_enable_env_var.remove_value();
-    vk_loader_layers_disable_env_var.remove_value();
-    vk_loader_debug_env_var.remove_value();
-    vk_loader_disable_inst_ext_filter_env_var.remove_value();
 
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#if COMMON_UNIX_PLATFORMS
     // Set only one of the 4 XDG variables to /etc, let everything else be empty
-    EnvVarWrapper xdg_config_home_env_var{"XDG_CONFIG_HOME", "/etc"};
-    EnvVarWrapper xdg_config_dirs_env_var{"XDG_CONFIG_DIRS", ""};
-    EnvVarWrapper xdg_data_home_env_var{"XDG_DATA_HOME", ""};
-    EnvVarWrapper xdg_data_dirs_env_var{"XDG_DATA_DIRS", ""};
-    EnvVarWrapper home_env_var{"HOME", "/home/fake_home"};
+    EnvVarWrapper xdg_config_home_env_var{"XDG_CONFIG_HOME", ETC_DIR};
+    EnvVarWrapper xdg_config_dirs_env_var{"XDG_CONFIG_DIRS"};
+    EnvVarWrapper xdg_data_home_env_var{"XDG_DATA_HOME"};
+    EnvVarWrapper xdg_data_dirs_env_var{"XDG_DATA_DIRS"};
+    EnvVarWrapper home_env_var{"HOME", HOME_DIR};
 #endif
     ::testing::InitGoogleTest(&argc, argv);
+    ::testing::UnitTest::GetInstance()->listeners().Append(new ThrowListener);
     int result = RUN_ALL_TESTS();
 
     return result;

@@ -61,11 +61,19 @@
 #include <stdio.h>
 #include <stdint.h>
 
+// Set of platforms with a common set of functionality which is queried throughout the program
+#if defined(__linux__) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__QNXNTO__) || defined(__FreeBSD__) || \
+    defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__GNU__)
+#define COMMON_UNIX_PLATFORMS 1
+#else
+#define COMMON_UNIX_PLATFORMS 0
+#endif
+
 #if defined(WIN32)
 #include <direct.h>
 #include <windows.h>
 #include <strsafe.h>
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif COMMON_UNIX_PLATFORMS
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -94,6 +102,13 @@
 #define FRAMEWORK_EXPORT
 #endif
 
+#include "json_writer.h"
+
+// get_env_var() - returns a std::string of `name`. if report_failure is true, then it will log to stderr that it didn't find the
+//     env-var
+// NOTE: This is only intended for test framework code, all test code MUST use EnvVarWrapper
+std::string get_env_var(std::string const& name, bool report_failure = true);
+
 /*
  * Wrapper around Environment Variables with common operations
  * Since Environment Variables leak between tests, there needs to be RAII code to remove them during test cleanup
@@ -102,11 +117,22 @@
 
 // Wrapper to set & remove env-vars automatically
 struct EnvVarWrapper {
-    // Constructor which does NOT set the env-var
-    EnvVarWrapper(std::string const& name) noexcept : name(name) {}
-    // Constructor which DOES set the env-var
-    EnvVarWrapper(std::string const& name, std::string const& value) noexcept : name(name), cur_value(value) { set_env_var(); }
-    ~EnvVarWrapper() noexcept { remove_env_var(); }
+    // Constructor which unsets the env-var
+    EnvVarWrapper(std::string const& name) noexcept : name(name) {
+        initial_value = get_env_var(name, false);
+        remove_env_var();
+    }
+    // Constructor which set the env-var to the specified value
+    EnvVarWrapper(std::string const& name, std::string const& value) noexcept : name(name), cur_value(value) {
+        initial_value = get_env_var(name, false);
+        set_env_var();
+    }
+    ~EnvVarWrapper() noexcept {
+        remove_env_var();
+        if (!initial_value.empty()) {
+            set_new_value(initial_value);
+        }
+    }
 
     // delete copy operators
     EnvVarWrapper(const EnvVarWrapper&) = delete;
@@ -130,22 +156,18 @@ struct EnvVarWrapper {
    private:
     std::string name;
     std::string cur_value;
+    std::string initial_value;
 
     void set_env_var();
     void remove_env_var() const;
 #if defined(WIN32)
     // Environment variable list separator - not for filesystem paths
     const char OS_ENV_VAR_LIST_SEPARATOR = ';';
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif COMMON_UNIX_PLATFORMS
     // Environment variable list separator - not for filesystem paths
     const char OS_ENV_VAR_LIST_SEPARATOR = ':';
 #endif
 };
-
-// get_env_var() - returns a std::string of `name`. if report_failure is true, then it will log to stderr that it didn't find the
-//     env-var
-// NOTE: This is only intended for test framework code, all test code MUST use EnvVarWrapper
-std::string get_env_var(std::string const& name, bool report_failure = true);
 
 // Windows specific error handling logic
 #if defined(WIN32)
@@ -162,10 +184,9 @@ namespace fs {
 std::string make_native(std::string const&);
 
 struct path {
-   private:
 #if defined(WIN32)
     static const char path_separator = '\\';
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif COMMON_UNIX_PLATFORMS
     static const char path_separator = '/';
 #endif
 
@@ -195,11 +216,11 @@ struct path {
     path operator/(const char* in) const;
 
     // accessors
-    path parent_path() const;
-    bool has_parent_path() const;
-    path filename() const;
-    path extension() const;
-    path stem() const;
+    path parent_path() const;      // Everything before the last path separator, if there is one.
+    bool has_parent_path() const;  // True if the path contains more than just a filename.
+    path filename() const;         // Everything after the last path separator.
+    path extension() const;        // The file extension, if it has one.
+    path stem() const;             // The filename minus the extension.
 
     // modifiers
     path& replace_filename(path const& replacement);
@@ -272,7 +293,7 @@ std::wstring widen(const std::string& utf8);
 
 #if defined(WIN32)
 typedef HMODULE loader_platform_dl_handle;
-static loader_platform_dl_handle loader_platform_open_library(const char* lib_path) {
+inline loader_platform_dl_handle loader_platform_open_library(const char* lib_path) {
     std::wstring lib_path_utf16 = widen(lib_path);
     // Try loading the library the original way first.
     loader_platform_dl_handle lib_handle = LoadLibraryW(lib_path_utf16.c_str());
@@ -285,7 +306,7 @@ static loader_platform_dl_handle loader_platform_open_library(const char* lib_pa
 }
 inline char* loader_platform_open_library_error(const char* libPath) {
     static char errorMsg[164];
-    (void)snprintf(errorMsg, 163, "Failed to open dynamic library \"%s\" with error %lu", libPath, GetLastError());
+    snprintf(errorMsg, 163, "Failed to open dynamic library \"%s\" with error %lu", libPath, GetLastError());
     return errorMsg;
 }
 inline void loader_platform_close_library(loader_platform_dl_handle library) { FreeLibrary(library); }
@@ -296,24 +317,24 @@ inline void* loader_platform_get_proc_address(loader_platform_dl_handle library,
 }
 inline char* loader_platform_get_proc_address_error(const char* name) {
     static char errorMsg[120];
-    (void)snprintf(errorMsg, 119, "Failed to find function \"%s\" in dynamic library", name);
+    snprintf(errorMsg, 119, "Failed to find function \"%s\" in dynamic library", name);
     return errorMsg;
 }
 
-#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif COMMON_UNIX_PLATFORMS
 
 typedef void* loader_platform_dl_handle;
 inline loader_platform_dl_handle loader_platform_open_library(const char* libPath) {
     return dlopen(libPath, RTLD_LAZY | RTLD_LOCAL);
 }
-inline const char* loader_platform_open_library_error(const char* libPath) { return dlerror(); }
+inline const char* loader_platform_open_library_error([[maybe_unused]] const char* libPath) { return dlerror(); }
 inline void loader_platform_close_library(loader_platform_dl_handle library) { dlclose(library); }
 inline void* loader_platform_get_proc_address(loader_platform_dl_handle library, const char* name) {
     assert(library);
     assert(name);
     return dlsym(library, name);
 }
-inline const char* loader_platform_get_proc_address_error(const char* name) { return dlerror(); }
+inline const char* loader_platform_get_proc_address_error([[maybe_unused]] const char* name) { return dlerror(); }
 #endif
 
 class FromVoidStarFunc {
@@ -513,6 +534,8 @@ inline std::ostream& operator<<(std::ostream& os, const VkResult& result) {
     return os << static_cast<int32_t>(result);
 }
 
+const char* get_platform_wsi_extension([[maybe_unused]] const char* api_selection);
+
 bool string_eq(const char* a, const char* b) noexcept;
 bool string_eq(const char* a, const char* b, size_t len) noexcept;
 
@@ -562,20 +585,17 @@ struct ManifestVersion {
     BUILDER_VALUE(ManifestVersion, uint32_t, major, 1)
     BUILDER_VALUE(ManifestVersion, uint32_t, minor, 0)
     BUILDER_VALUE(ManifestVersion, uint32_t, patch, 0)
-    ManifestVersion() noexcept {};
-    ManifestVersion(uint32_t major, uint32_t minor, uint32_t patch) noexcept : major(major), minor(minor), patch(patch){};
 
     std::string get_version_str() const noexcept {
-        return std::string("\"file_format_version\": \"") + std::to_string(major) + "." + std::to_string(minor) + "." +
-               std::to_string(patch) + "\",";
+        return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
     }
 };
 
 // ManifestICD builder
 struct ManifestICD {
-    BUILDER_VALUE(ManifestICD, ManifestVersion, file_format_version, ManifestVersion())
+    BUILDER_VALUE(ManifestICD, ManifestVersion, file_format_version, {})
     BUILDER_VALUE(ManifestICD, uint32_t, api_version, 0)
-    BUILDER_VALUE(ManifestICD, std::string, lib_path, {})
+    BUILDER_VALUE(ManifestICD, fs::path, lib_path, {})
     BUILDER_VALUE(ManifestICD, bool, is_portability_driver, false)
     BUILDER_VALUE(ManifestICD, std::string, library_arch, "")
     std::string get_manifest_str() const;
@@ -597,7 +617,7 @@ struct ManifestLayer {
             BUILDER_VALUE(FunctionOverride, std::string, vk_func, {})
             BUILDER_VALUE(FunctionOverride, std::string, override_name, {})
 
-            std::string get_manifest_str() const { return std::string("\"") + vk_func + "\":\"" + override_name + "\""; }
+            void get_manifest_str(JsonWriter& writer) const { writer.AddKeyedString(vk_func, override_name); }
         };
         struct Extension {
             Extension() noexcept {}
@@ -606,7 +626,7 @@ struct ManifestLayer {
             std::string name;
             uint32_t spec_version = 0;
             std::vector<std::string> entrypoints;
-            std::string get_manifest_str() const;
+            void get_manifest_str(JsonWriter& writer) const;
         };
         BUILDER_VALUE(LayerDescription, std::string, name, {})
         BUILDER_VALUE(LayerDescription, Type, type, Type::INSTANCE)
@@ -626,7 +646,7 @@ struct ManifestLayer {
         BUILDER_VECTOR(LayerDescription, std::string, app_keys, app_key)
         BUILDER_VALUE(LayerDescription, std::string, library_arch, "")
 
-        std::string get_manifest_str() const;
+        void get_manifest_str(JsonWriter& writer) const;
         VkLayerProperties get_layer_properties() const;
     };
     BUILDER_VALUE(ManifestLayer, ManifestVersion, file_format_version, {})
@@ -656,11 +676,6 @@ struct MockQueueFamilyProperties {
     BUILDER_VALUE(MockQueueFamilyProperties, VkQueueFamilyProperties, properties, {})
     BUILDER_VALUE(MockQueueFamilyProperties, bool, support_present, false)
 
-    MockQueueFamilyProperties() {}
-
-    MockQueueFamilyProperties(VkQueueFamilyProperties properties, bool support_present = false)
-        : properties(properties), support_present(support_present) {}
-
     VkQueueFamilyProperties get() const noexcept { return properties; }
 };
 
@@ -683,6 +698,8 @@ struct InstanceCreateInfo {
     VkInstanceCreateInfo* get() noexcept;
 
     InstanceCreateInfo& set_api_version(uint32_t major, uint32_t minor, uint32_t patch);
+
+    InstanceCreateInfo& setup_WSI(const char* api_selection = nullptr);
 };
 
 struct DeviceQueueCreateInfo {
@@ -734,7 +751,7 @@ inline bool operator!=(const VkExtensionProperties& a, const VkExtensionProperti
 
 struct VulkanFunction {
     std::string name;
-    PFN_vkVoidFunction function;
+    PFN_vkVoidFunction function = nullptr;
 };
 
 template <typename T, size_t U>
@@ -767,10 +784,10 @@ inline bool contains(std::vector<VkLayerProperties> const& vec, const char* name
                        [name](VkLayerProperties const& elem) { return string_eq(name, elem.layerName); });
 }
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__GNU__)
 
 // find application path + name. Path cannot be longer than 1024, returns NULL if it is greater than that.
-static inline std::string test_platform_executable_path() {
+inline std::string test_platform_executable_path() {
     std::string buffer;
     buffer.resize(1024);
     ssize_t count = readlink("/proc/self/exe", &buffer[0], buffer.size());
@@ -780,9 +797,9 @@ static inline std::string test_platform_executable_path() {
     buffer.resize(count);
     return buffer;
 }
-#elif defined(__APPLE__)  // defined(__linux__)
+#elif defined(__APPLE__)
 #include <libproc.h>
-static inline std::string test_platform_executable_path() {
+inline std::string test_platform_executable_path() {
     std::string buffer;
     buffer.resize(1024);
     pid_t pid = getpid();
@@ -794,7 +811,7 @@ static inline std::string test_platform_executable_path() {
 }
 #elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
 #include <sys/sysctl.h>
-static inline std::string test_platform_executable_path() {
+inline std::string test_platform_executable_path() {
     int mib[] = {
         CTL_KERN,
 #if defined(__NetBSD__)
@@ -818,7 +835,7 @@ static inline std::string test_platform_executable_path() {
     return buffer;
 }
 #elif defined(__Fuchsia__) || defined(__OpenBSD__)
-static inline std::string test_platform_executable_path() { return {}; }
+inline std::string test_platform_executable_path() { return {}; }
 #elif defined(__QNXNTO__)
 
 #define SYSCONFDIR "/etc"
@@ -826,7 +843,7 @@ static inline std::string test_platform_executable_path() { return {}; }
 #include <fcntl.h>
 #include <sys/stat.h>
 
-static inline std::string test_platform_executable_path() {
+inline std::string test_platform_executable_path() {
     std::string buffer;
     buffer.resize(1024);
     int fd = open("/proc/self/exefile", O_RDONLY);
@@ -848,7 +865,7 @@ static inline std::string test_platform_executable_path() {
 }
 #endif  // defined (__QNXNTO__)
 #if defined(WIN32)
-static inline std::string test_platform_executable_path() {
+inline std::string test_platform_executable_path() {
     std::string buffer;
     buffer.resize(1024);
     DWORD ret = GetModuleFileName(NULL, static_cast<LPSTR>(&buffer[0]), (DWORD)buffer.size());
@@ -858,4 +875,13 @@ static inline std::string test_platform_executable_path() {
     buffer[ret] = '\0';
     return buffer;
 }
+
+inline std::wstring conver_str_to_wstr(std::string const& input) {
+    std::wstring output{};
+    output.resize(input.size());
+    size_t characters_converted = 0;
+    mbstowcs_s(&characters_converted, &output[0], output.size() + 1, input.c_str(), input.size());
+    return output;
+}
+
 #endif
