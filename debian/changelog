@@ -1,3 +1,262 @@
+vulkan-loader (1.3.261.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Charles Giessen ]
+  * Simple cleanup of loader_add_to_ext_list
+  * Make tests throw if ASSERT failed
+  * Enhance vkEnumerateDeviceExtensionProperties tests
+  * Refactor terminator_EnumerateDeviceExtensionProperties
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.244
+  * build: Update to header 1.3.245
+
+  [ Charles Giessen ]
+  * Add 4th component to version in loader.rc
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.246
+
+  [ Charles Giessen ]
+  * Make correct layer be used when duplicates are present
+  * Fix ordering regression for VK_INSTANCE_LAYERS
+  * Use Ubuntu 22 in github actions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.247
+
+  [ Charles Giessen ]
+  * Move vk_dispatch_table_helper.h to tests
+  * Log ERROR when layers in VK_INSTANCE_LAYERS are missing
+  * Remove unnecessary static in source
+  * Cleanup macro usage
+  * Fix debug extension function loading
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.248
+
+  [ Charles Giessen ]
+  * Add compatibility bug for RTSS when querying for vkCreateDevice
+  * Add tests to preserve buggy query of vkCreateDevice
+
+  [ Cathal Corbett ]
+  * Update loader cmake lists to use PROJECT_SOURCE_DIR over CMAKE_SOURCE_DIR.
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.249
+
+  [ juan-lunarg ]
+  * loader: Add win32 support for DYNAMIC_LIBRARY_UNLOADING
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.250
+
+  [ juan-lunarg ]
+  * docs: Update README.md
+  * ci: Add concurrency functionality
+  * cmake: Cleanup unicode logic
+  * scripts: Incorporate latest changes from VVL
+  * ci: Test Ninja build
+  * Fix LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING WIN32 support
+  * ci: Test LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING
+  * cmake: Fix LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING
+
+  [ Charles Giessen ]
+  * Added libgcc-s1:i386 to linux-32 Github actions
+
+  [ Geoff Lang ]
+  * Don't export Vulkan functions when building the loader statically
+
+  [ Charles Giessen ]
+  * Fix crash from layers creating devices on different physical devices
+  * Make loader_get_icd_and_device check for a NULL device
+  * Modify test layer binary names correctly
+  * Make ChainInfo nextGIPA work in vkCreateDevice
+  * Add a test for loader_gpa_instance_terminator
+
+  [ juan-lunarg ]
+  * LOADER_USE_UNSAFE_FILE_SEARCH
+  * docs: Document LOADER_CODEGEN
+  * cmake: Add LOADER_CODEGEN
+  * cmake: Don't install GTEST along with vulkan loader
+  * ci: Test pkg-config and installation
+
+  [ Charles Giessen ]
+  * Create Dummy function just for windows_initialization
+  * Add FrameworkSettings to more easily configure the framework
+  * Move loader_get_json to cJSON
+  * Make cJSON not add double quotes to strings
+  * Rename log level to reflect its global status
+  * Refactor loader_log for clarity and performance
+  * Add helper parsing functions to cJSON
+  * Make EnvVarWrapper remove env-vars initially
+  * Add GetActiveLayers function helper in tests
+  * Cleanup JSON output in tests with utility
+  * Add unsecured manifest location to tests
+  * Add test utilities for getting instance layers and extensions
+  * Make Allocation tests less noisy
+  * Include Hive in windows registry logs
+  * Fix log.h to use #pragma once
+  * Move library list allocation to out of layer search function
+  * Pass inst rather than NULL during layer scanning
+  * Remove redundant variable in loader_scan_for_layers
+  * Remove useless if check in loader_scan_for_layers
+  * Remove useless lock & comment out cJSON error handling
+  * Remove redundant clear when scanning for layers
+  * Significantly reduce duplicate layer scanning code
+  * Fix tests dying if an exception is thrown.
+  * Add tests for system installed binaries
+  * Remove DEFAULT_VK_DRIVERS_PATH macro define
+  * Remove layer list copies from loader_device
+  * Meta layers now dont add layers more than once
+  * Turn layer lists into lists of pointers
+  * Refactor to not use fixed length strings
+  * Fix cJSON_print using wrong allocation scope
+  * Remove guard for C++ in cJSON.h
+  * Use braces consistently in new helper functions
+  * Add header files to source file list in CMake
+  * Modify test framework surface creation helpers
+  * Add loader settings file
+  * Separate meta layer verification & update logic
+  * Add NULL checks to cJSON helper functions
+  * Propagate OOM in more places
+  * Use strncpy in loader_add_environment_layers
+  * Fix issues found with clang-tidy
+  * Remove foward declaration of VkResult and VkFlags
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.251
+
+  [ Charles Giessen ]
+  * Remove unused variable for clang-cl on windows
+  * Add clang-cl run to github actions CI
+  * Remove loader.aps
+  * Make assembly work on macOS
+
+  [ John Bauman ]
+  * loader: Add void to function arguments
+
+  [ Charles Giessen ]
+  * Remove inclusion of winsock2.h
+
+  [ juan-lunarg ]
+  * ci: Add MinGW build
+
+  [ Charles Giessen ]
+  * Add CI runs for unknown function fallbacks
+  * Fix fallback unknown function build logic
+  * Silence MINGW error about casting functions
+  * Disable MinGW Github Actions run
+  * Change settings file location
+  * Fix USE_MASM=OFF in github actions
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.253
+
+  [ Tony-LunarG ]
+  * Better handle missing settings file
+
+  [ Charles Giessen ]
+  * Replace strok with threadsafe versions
+  * Add tests for longer version strings
+  * Fix EnvVarWrapper overwriting values
+  * Simply usage of LOADER_STANDARD_C_PROPERTIES in cmake
+  * Use CMAKE_MSVC_RUNTIME_LIBRARY to set desired C runtime for windows
+
+  [ Christopher Degawa ]
+  * loader: fix 32-bit jwasm compilation
+
+  [ Charles Giessen ]
+  * Mark thread_safe_strtok as inline
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.254
+
+  [ Charles Giessen ]
+  * Add and fix warnings for unused functions and parameters
+  * Add ENABLE_WERROR to github actions
+  * Cleanup BUILD.md
+  * Update tests to require a C++17 compiler
+  * Remove unnecessary constructors in tests
+  * Use [[maybe_unused]] in tests
+  * Refactor how tests enable WSI
+  * Remove tests PhysicalDevice constructor overload
+  * Add EnumerateLayerDeviceExtensions helper to tests
+  * Refactor how tests load function pointers
+  * Cleanup test creation of queues
+  * Refactor return value of env.add_icd()
+
+  [ Juan Ramos ]
+  * cmake: Update update_deps.py logic
+
+  [ Charles Giessen ]
+  * Clarify requirements for Layer Interface Version 1
+  * Cleanup test layer GIPA & GDPA function exports
+  * Remove indexing on layer_prop_list
+  * Add test for layer_prop_list out of bounds indexing
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.255
+  * build: Update to header 1.3.256
+
+  [ Pino Toscano ]
+  * loader: add support for GNU/Hurd
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.257
+
+  [ mylifeyouwill ]
+  * Fix Condition Statement Error
+
+  [ Joyce ]
+  * Create SECURITY.md
+
+  [ Charles Giessen ]
+  * Fix duplicate layer test which used /etc
+  * Fix wrong pointer usage
+  * Add test for override layer path logging
+  * Set SYSCONFDIR in linux-32 actions CI run
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.258
+
+  [ Juan Ramos ]
+  * cmake: Remove cmake-format
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.259
+
+  [ Charles Giessen ]
+  * Enhance warning messages for portability enumeration
+  * Warn when ICD Manifest version differs from  vkEnumerateInstanceVersion
+  * Add VK_LAYER to layer names in tests
+  * Cleanup how tests create PhysicalDeviceGroup vectors
+  * Remove unecessary version setting in tests
+  * Set correct API version in tests
+  * Check api version when querying device commands
+  * Add tests for explicit layers with pre_instance_functions
+  * Make Disabling Dynamic Library unloading a runtime option
+
+  [ Gregory Schlomoff ]
+  * Fix wrong file name in comments
+
+  [ Charles Giessen ]
+  * Make fatal log messages be written to stderr
+  * Add relative path support to test harness
+  * Fixed the value of the FATAL_ERROR bit
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.260
+
+  [ Charles Giessen ]
+  * Unwrap VkInstance in set name/tag debug functions
+  * Enable VK_KHR_maintenance_5 support
+  * Make maintenance 5 require the feature to be enabled
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.261
+
+ -- john <john@odin>  Wed, 16 Aug 2023 08:36:26 -0600
+
 vulkan-loader (1.3.250.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ Charles Giessen ]
