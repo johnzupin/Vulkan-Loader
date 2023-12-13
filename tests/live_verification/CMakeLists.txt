@@ -21,7 +21,7 @@ set_target_properties(dynamic_rendering_get_proc_addr PROPERTIES ${TESTS_STANDAR
 
 add_subdirectory(dynamic_loader_behavior)
 
-if(APPLE AND BUILD_STATIC_LOADER)
+if(APPLE_STATIC_LOADER)
     add_executable(macos_static_loader_build macos_static_loader_build.cpp)
     target_link_libraries(macos_static_loader_build loader_common_options vulkan Vulkan::Headers)
     set_target_properties(macos_static_loader_build PROPERTIES ${TESTS_STANDARD_CXX_PROPERTIES})
@@ -30,3 +30,6 @@ if(APPLE AND BUILD_STATIC_LOADER)
         target_link_options(macos_static_loader_build PUBLIC -fsanitize=thread)
     endif()
 endif()
+
+add_executable(time_dynamic_loading time_dynamic_loading.cpp)
+target_link_libraries(time_dynamic_loading Vulkan::Headers vulkan)

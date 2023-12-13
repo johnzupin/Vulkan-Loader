@@ -30,16 +30,18 @@
 #endif
 
 #include <assert.h>
-#include <string.h>
+#include <float.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 #if defined(__Fuchsia__)
 #include "dlopen_fuchsia.h"
 #endif  // defined(__Fuchsia__)
 
 // Set of platforms with a common set of functionality which is queried throughout the program
-#if defined(__linux__) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__QNXNTO__) || defined(__FreeBSD__) || \
+#if defined(__linux__) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__QNX__) || defined(__FreeBSD__) || \
     defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__GNU__)
 #define COMMON_UNIX_PLATFORMS 1
 #else
@@ -71,7 +73,11 @@
 
 #include "stack_allocation.h"
 
-#if defined(BUILD_STATIC_LOADER)
+#if defined(APPLE_STATIC_LOADER) && !defined(__APPLE__)
+#error "APPLE_STATIC_LOADER can only be defined on Apple platforms!"
+#endif
+
+#if defined(APPLE_STATIC_LOADER)
 #define LOADER_EXPORT
 #elif defined(__GNUC__) && __GNUC__ >= 4
 #define LOADER_EXPORT __attribute__((visibility("default")))
@@ -99,6 +105,7 @@
 // Support added in v1.3.234 loader
 #define VK_LAYERS_ENABLE_ENV_VAR "VK_LOADER_LAYERS_ENABLE"
 #define VK_LAYERS_DISABLE_ENV_VAR "VK_LOADER_LAYERS_DISABLE"
+#define VK_LAYERS_ALLOW_ENV_VAR "VK_LOADER_LAYERS_ALLOW"
 #define VK_DRIVERS_SELECT_ENV_VAR "VK_LOADER_DRIVERS_SELECT"
 #define VK_DRIVERS_DISABLE_ENV_VAR "VK_LOADER_DRIVERS_DISABLE"
 #define VK_LOADER_DISABLE_ALL_LAYERS_VAR_1 "~all~"
@@ -141,7 +148,7 @@
 #define VK_ILAYERS_INFO_REGISTRY_LOC ""
 #define VK_SETTINGS_INFO_REGISTRY_LOC ""
 
-#if defined(__QNXNTO__)
+#if defined(__QNX__)
 #define SYSCONFDIR "/etc"
 #endif
 
@@ -177,15 +184,10 @@ typedef pthread_cond_t loader_platform_thread_cond;
 #define VK_ELAYERS_INFO_RELATIVE_DIR ""
 #define VK_ILAYERS_INFO_RELATIVE_DIR ""
 
-#if defined(_WIN64)
-#define HKR_VK_DRIVER_NAME API_NAME "DriverName"
-#else
-#define HKR_VK_DRIVER_NAME API_NAME "DriverNameWow"
-#endif
-#define VK_DRIVERS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\" API_NAME "\\Drivers"
-#define VK_ELAYERS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\" API_NAME "\\ExplicitLayers"
-#define VK_ILAYERS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\" API_NAME "\\ImplicitLayers"
-#define VK_SETTINGS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\" API_NAME "\\LoaderSettings"
+#define VK_DRIVERS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\Vulkan\\Drivers"
+#define VK_ELAYERS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\Vulkan\\ExplicitLayers"
+#define VK_ILAYERS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\Vulkan\\ImplicitLayers"
+#define VK_SETTINGS_INFO_REGISTRY_LOC "SOFTWARE\\Khronos\\Vulkan\\LoaderSettings"
 
 #define PRINTF_SIZE_T_SPECIFIER "%Iu"
 
@@ -224,7 +226,7 @@ static inline bool loader_platform_is_path(const char *path) { return strchr(pat
 // resources allocated by anything allocated by once init. This isn't a problem for static libraries, but it is for dynamic
 // ones. When building a DLL, we use DllMain() instead to allow properly cleaning up resources.
 
-#if defined(__APPLE__) && defined(BUILD_STATIC_LOADER)
+#if defined(APPLE_STATIC_LOADER)
 static inline void loader_platform_thread_once_fn(pthread_once_t *ctl, void (*func)(void)) {
     assert(func != NULL);
     assert(ctl != NULL);
@@ -272,14 +274,31 @@ static inline char *loader_platform_executable_path(char *buffer, size_t size) {
     return buffer;
 }
 #elif defined(__APPLE__)
+#include <TargetConditionals.h>
+// TARGET_OS_IPHONE isn't just iOS it's also iOS/tvOS/watchOS. See TargetConditionals.h documentation.
+#if TARGET_OS_IPHONE
+static inline char *loader_platform_executable_path(char *buffer, size_t size) {
+    (void)size;
+    buffer[0] = '\0';
+    return buffer;
+}
+#endif
+#if TARGET_OS_OSX
 #include <libproc.h>
 static inline char *loader_platform_executable_path(char *buffer, size_t size) {
+    // proc_pidpath takes a uint32_t for the buffer size
+    if (size > UINT32_MAX) {
+        return NULL;
+    }
     pid_t pid = getpid();
-    int ret = proc_pidpath(pid, buffer, size);
-    if (ret <= 0) return NULL;
+    int ret = proc_pidpath(pid, buffer, (uint32_t)size);
+    if (ret <= 0) {
+        return NULL;
+    }
     buffer[ret] = '\0';
     return buffer;
 }
+#endif
 #elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
 #include <sys/sysctl.h>
 static inline char *loader_platform_executable_path(char *buffer, size_t size) {
@@ -303,7 +322,7 @@ static inline char *loader_platform_executable_path(char *buffer, size_t size) {
 }
 #elif defined(__Fuchsia__) || defined(__OpenBSD__)
 static inline char *loader_platform_executable_path(char *buffer, size_t size) { return NULL; }
-#elif defined(__QNXNTO__)
+#elif defined(__QNX__)
 
 #define SYSCONFDIR "/etc"
 
@@ -327,9 +346,9 @@ static inline char *loader_platform_executable_path(char *buffer, size_t size) {
 
     return buffer;
 }
-#endif  // defined (__QNXNTO__)
+#endif  // defined (__QNX__)
 
-// Compatability with compilers that don't support __has_feature
+// Compatibility with compilers that don't support __has_feature
 #if !defined(__has_feature)
 #define __has_feature(x) 0
 #endif
@@ -389,6 +408,16 @@ static inline void loader_platform_thread_unlock_mutex(loader_platform_thread_mu
 static inline void loader_platform_thread_delete_mutex(loader_platform_thread_mutex *pMutex) { pthread_mutex_destroy(pMutex); }
 
 static inline void *thread_safe_strtok(char *str, const char *delim, char **saveptr) { return strtok_r(str, delim, saveptr); }
+
+static inline FILE *loader_fopen(const char *fileName, const char *mode) { return fopen(fileName, mode); }
+static inline char *loader_strncat(char *dest, size_t dest_sz, const char *src, size_t count) {
+    (void)dest_sz;
+    return strncat(dest, src, count);
+}
+static inline char *loader_strncpy(char *dest, size_t dest_sz, const char *src, size_t count) {
+    (void)dest_sz;
+    return strncpy(dest, src, count);
+}
 
 #elif defined(_WIN32)
 
@@ -546,6 +575,25 @@ static inline void loader_platform_thread_delete_mutex(loader_platform_thread_mu
 
 static inline void *thread_safe_strtok(char *str, const char *delimiters, char **context) {
     return strtok_s(str, delimiters, context);
+}
+
+static inline FILE *loader_fopen(const char *fileName, const char *mode) {
+    FILE *file = NULL;
+    errno_t err = fopen_s(&file, fileName, mode);
+    if (err != 0) return NULL;
+    return file;
+}
+
+static inline char *loader_strncat(char *dest, size_t dest_sz, const char *src, size_t count) {
+    errno_t err = strncat_s(dest, dest_sz, src, count);
+    if (err != 0) return NULL;
+    return dest;
+}
+
+static inline char *loader_strncpy(char *dest, size_t dest_sz, const char *src, size_t count) {
+    errno_t err = strncpy_s(dest, dest_sz, src, count);
+    if (err != 0) return NULL;
+    return dest;
 }
 
 #else  // defined(_WIN32)

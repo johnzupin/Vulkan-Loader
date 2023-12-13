@@ -22,6 +22,7 @@
  * Author: Mark Young <marky@lunarg.com>
  */
 
+// clang-format off
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,267 +47,273 @@ VKAPI_ATTR VkResult VKAPI_CALL vkDevExtError(VkDevice dev) {
     return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
-VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_icd_term *icd_term, VkInstance inst,
-                                                   const PFN_vkGetInstanceProcAddr fp_gipa) {
+VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_instance* inst, struct loader_icd_term *icd_term) {
+    const PFN_vkGetInstanceProcAddr fp_gipa = icd_term->scanned_icd->GetInstanceProcAddr;
 
-#define LOOKUP_GIPA(func, required)                                                        \
-    do {                                                                                   \
-        icd_term->dispatch.func = (PFN_vk##func)fp_gipa(inst, "vk" #func);                 \
-        if (!icd_term->dispatch.func && required) {                                        \
-            loader_log((struct loader_instance *)inst, VULKAN_LOADER_WARN_BIT, 0, \
-                       loader_platform_get_proc_address_error("vk" #func));                \
-            return false;                                                                  \
-        }                                                                                  \
+#define LOOKUP_GIPA(func) icd_term->dispatch.func = (PFN_vk##func)fp_gipa(icd_term->instance, "vk" #func);
+
+#define LOOKUP_REQUIRED_GIPA(func)                                                      \
+    do {                                                                                \
+        LOOKUP_GIPA(func);                                                              \
+        if (!icd_term->dispatch.func) {                                                 \
+            loader_log(inst, VULKAN_LOADER_WARN_BIT, 0, "Unable to load %s from ICD %s",\
+                       "vk"#func, icd_term->scanned_icd->lib_name);                     \
+            return false;                                                               \
+        }                                                                               \
     } while (0)
 
 
     // ---- Core 1_0
-    LOOKUP_GIPA(DestroyInstance, true);
-    LOOKUP_GIPA(EnumeratePhysicalDevices, true);
-    LOOKUP_GIPA(GetPhysicalDeviceFeatures, true);
-    LOOKUP_GIPA(GetPhysicalDeviceFormatProperties, true);
-    LOOKUP_GIPA(GetPhysicalDeviceImageFormatProperties, true);
-    LOOKUP_GIPA(GetPhysicalDeviceProperties, true);
-    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyProperties, true);
-    LOOKUP_GIPA(GetPhysicalDeviceMemoryProperties, true);
-    LOOKUP_GIPA(GetDeviceProcAddr, true);
-    LOOKUP_GIPA(CreateDevice, true);
-    LOOKUP_GIPA(EnumerateDeviceExtensionProperties, true);
-    LOOKUP_GIPA(GetPhysicalDeviceSparseImageFormatProperties, true);
+    LOOKUP_REQUIRED_GIPA(DestroyInstance);
+    LOOKUP_REQUIRED_GIPA(EnumeratePhysicalDevices);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceFeatures);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceFormatProperties);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceImageFormatProperties);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceProperties);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceQueueFamilyProperties);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceMemoryProperties);
+    LOOKUP_REQUIRED_GIPA(GetDeviceProcAddr);
+    LOOKUP_REQUIRED_GIPA(CreateDevice);
+    LOOKUP_REQUIRED_GIPA(EnumerateDeviceExtensionProperties);
+    LOOKUP_REQUIRED_GIPA(GetPhysicalDeviceSparseImageFormatProperties);
 
     // ---- Core 1_1
-    LOOKUP_GIPA(EnumeratePhysicalDeviceGroups, false);
-    LOOKUP_GIPA(GetPhysicalDeviceFeatures2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceProperties2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceFormatProperties2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceImageFormatProperties2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyProperties2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceMemoryProperties2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSparseImageFormatProperties2, false);
-    LOOKUP_GIPA(GetPhysicalDeviceExternalBufferProperties, false);
-    LOOKUP_GIPA(GetPhysicalDeviceExternalFenceProperties, false);
-    LOOKUP_GIPA(GetPhysicalDeviceExternalSemaphoreProperties, false);
+    LOOKUP_GIPA(EnumeratePhysicalDeviceGroups);
+    LOOKUP_GIPA(GetPhysicalDeviceFeatures2);
+    LOOKUP_GIPA(GetPhysicalDeviceProperties2);
+    LOOKUP_GIPA(GetPhysicalDeviceFormatProperties2);
+    LOOKUP_GIPA(GetPhysicalDeviceImageFormatProperties2);
+    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyProperties2);
+    LOOKUP_GIPA(GetPhysicalDeviceMemoryProperties2);
+    LOOKUP_GIPA(GetPhysicalDeviceSparseImageFormatProperties2);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalBufferProperties);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalFenceProperties);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalSemaphoreProperties);
 
     // ---- Core 1_3
-    LOOKUP_GIPA(GetPhysicalDeviceToolProperties, false);
+    LOOKUP_GIPA(GetPhysicalDeviceToolProperties);
 
     // ---- VK_KHR_surface extension commands
-    LOOKUP_GIPA(DestroySurfaceKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSurfaceSupportKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSurfaceCapabilitiesKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSurfaceFormatsKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSurfacePresentModesKHR, false);
+    LOOKUP_GIPA(DestroySurfaceKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfaceSupportKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfaceCapabilitiesKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfaceFormatsKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfacePresentModesKHR);
 
     // ---- VK_KHR_swapchain extension commands
-    LOOKUP_GIPA(GetPhysicalDevicePresentRectanglesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDevicePresentRectanglesKHR);
 
     // ---- VK_KHR_display extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceDisplayPropertiesKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceDisplayPlanePropertiesKHR, false);
-    LOOKUP_GIPA(GetDisplayPlaneSupportedDisplaysKHR, false);
-    LOOKUP_GIPA(GetDisplayModePropertiesKHR, false);
-    LOOKUP_GIPA(CreateDisplayModeKHR, false);
-    LOOKUP_GIPA(GetDisplayPlaneCapabilitiesKHR, false);
-    LOOKUP_GIPA(CreateDisplayPlaneSurfaceKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceDisplayPropertiesKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceDisplayPlanePropertiesKHR);
+    LOOKUP_GIPA(GetDisplayPlaneSupportedDisplaysKHR);
+    LOOKUP_GIPA(GetDisplayModePropertiesKHR);
+    LOOKUP_GIPA(CreateDisplayModeKHR);
+    LOOKUP_GIPA(GetDisplayPlaneCapabilitiesKHR);
+    LOOKUP_GIPA(CreateDisplayPlaneSurfaceKHR);
 
     // ---- VK_KHR_xlib_surface extension commands
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
-    LOOKUP_GIPA(CreateXlibSurfaceKHR, false);
+    LOOKUP_GIPA(CreateXlibSurfaceKHR);
 #endif // VK_USE_PLATFORM_XLIB_KHR
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
-    LOOKUP_GIPA(GetPhysicalDeviceXlibPresentationSupportKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceXlibPresentationSupportKHR);
 #endif // VK_USE_PLATFORM_XLIB_KHR
 
     // ---- VK_KHR_xcb_surface extension commands
 #if defined(VK_USE_PLATFORM_XCB_KHR)
-    LOOKUP_GIPA(CreateXcbSurfaceKHR, false);
+    LOOKUP_GIPA(CreateXcbSurfaceKHR);
 #endif // VK_USE_PLATFORM_XCB_KHR
 #if defined(VK_USE_PLATFORM_XCB_KHR)
-    LOOKUP_GIPA(GetPhysicalDeviceXcbPresentationSupportKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceXcbPresentationSupportKHR);
 #endif // VK_USE_PLATFORM_XCB_KHR
 
     // ---- VK_KHR_wayland_surface extension commands
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    LOOKUP_GIPA(CreateWaylandSurfaceKHR, false);
+    LOOKUP_GIPA(CreateWaylandSurfaceKHR);
 #endif // VK_USE_PLATFORM_WAYLAND_KHR
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    LOOKUP_GIPA(GetPhysicalDeviceWaylandPresentationSupportKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceWaylandPresentationSupportKHR);
 #endif // VK_USE_PLATFORM_WAYLAND_KHR
 
     // ---- VK_KHR_android_surface extension commands
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
-    LOOKUP_GIPA(CreateAndroidSurfaceKHR, false);
+    LOOKUP_GIPA(CreateAndroidSurfaceKHR);
 #endif // VK_USE_PLATFORM_ANDROID_KHR
 
     // ---- VK_KHR_win32_surface extension commands
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    LOOKUP_GIPA(CreateWin32SurfaceKHR, false);
+    LOOKUP_GIPA(CreateWin32SurfaceKHR);
 #endif // VK_USE_PLATFORM_WIN32_KHR
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    LOOKUP_GIPA(GetPhysicalDeviceWin32PresentationSupportKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceWin32PresentationSupportKHR);
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
     // ---- VK_KHR_video_queue extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceVideoCapabilitiesKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceVideoFormatPropertiesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceVideoCapabilitiesKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceVideoFormatPropertiesKHR);
 
     // ---- VK_KHR_get_physical_device_properties2 extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceFeatures2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceProperties2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceFormatProperties2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceImageFormatProperties2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyProperties2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceMemoryProperties2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSparseImageFormatProperties2KHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceFeatures2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceProperties2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceFormatProperties2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceImageFormatProperties2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyProperties2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceMemoryProperties2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceSparseImageFormatProperties2KHR);
 
     // ---- VK_KHR_device_group_creation extension commands
-    LOOKUP_GIPA(EnumeratePhysicalDeviceGroupsKHR, false);
+    LOOKUP_GIPA(EnumeratePhysicalDeviceGroupsKHR);
 
     // ---- VK_KHR_external_memory_capabilities extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceExternalBufferPropertiesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalBufferPropertiesKHR);
 
     // ---- VK_KHR_external_semaphore_capabilities extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceExternalSemaphorePropertiesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalSemaphorePropertiesKHR);
 
     // ---- VK_KHR_external_fence_capabilities extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceExternalFencePropertiesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalFencePropertiesKHR);
 
     // ---- VK_KHR_performance_query extension commands
-    LOOKUP_GIPA(EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR, false);
+    LOOKUP_GIPA(EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR);
+    LOOKUP_GIPA(GetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR);
 
     // ---- VK_KHR_get_surface_capabilities2 extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceSurfaceCapabilities2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceSurfaceFormats2KHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfaceCapabilities2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfaceFormats2KHR);
 
     // ---- VK_KHR_get_display_properties2 extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceDisplayProperties2KHR, false);
-    LOOKUP_GIPA(GetPhysicalDeviceDisplayPlaneProperties2KHR, false);
-    LOOKUP_GIPA(GetDisplayModeProperties2KHR, false);
-    LOOKUP_GIPA(GetDisplayPlaneCapabilities2KHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceDisplayProperties2KHR);
+    LOOKUP_GIPA(GetPhysicalDeviceDisplayPlaneProperties2KHR);
+    LOOKUP_GIPA(GetDisplayModeProperties2KHR);
+    LOOKUP_GIPA(GetDisplayPlaneCapabilities2KHR);
 
     // ---- VK_KHR_fragment_shading_rate extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceFragmentShadingRatesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceFragmentShadingRatesKHR);
 
     // ---- VK_KHR_video_encode_queue extension commands
 #if defined(VK_ENABLE_BETA_EXTENSIONS)
-    LOOKUP_GIPA(GetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR);
 #endif // VK_ENABLE_BETA_EXTENSIONS
 
     // ---- VK_KHR_cooperative_matrix extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceCooperativeMatrixPropertiesKHR, false);
+    LOOKUP_GIPA(GetPhysicalDeviceCooperativeMatrixPropertiesKHR);
+
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    LOOKUP_GIPA(GetPhysicalDeviceCalibrateableTimeDomainsKHR);
 
     // ---- VK_EXT_debug_report extension commands
-    LOOKUP_GIPA(CreateDebugReportCallbackEXT, false);
-    LOOKUP_GIPA(DestroyDebugReportCallbackEXT, false);
-    LOOKUP_GIPA(DebugReportMessageEXT, false);
+    LOOKUP_GIPA(CreateDebugReportCallbackEXT);
+    LOOKUP_GIPA(DestroyDebugReportCallbackEXT);
+    LOOKUP_GIPA(DebugReportMessageEXT);
 
     // ---- VK_GGP_stream_descriptor_surface extension commands
 #if defined(VK_USE_PLATFORM_GGP)
-    LOOKUP_GIPA(CreateStreamDescriptorSurfaceGGP, false);
+    LOOKUP_GIPA(CreateStreamDescriptorSurfaceGGP);
 #endif // VK_USE_PLATFORM_GGP
 
     // ---- VK_NV_external_memory_capabilities extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceExternalImageFormatPropertiesNV, false);
+    LOOKUP_GIPA(GetPhysicalDeviceExternalImageFormatPropertiesNV);
 
     // ---- VK_NN_vi_surface extension commands
 #if defined(VK_USE_PLATFORM_VI_NN)
-    LOOKUP_GIPA(CreateViSurfaceNN, false);
+    LOOKUP_GIPA(CreateViSurfaceNN);
 #endif // VK_USE_PLATFORM_VI_NN
 
     // ---- VK_EXT_direct_mode_display extension commands
-    LOOKUP_GIPA(ReleaseDisplayEXT, false);
+    LOOKUP_GIPA(ReleaseDisplayEXT);
 
     // ---- VK_EXT_acquire_xlib_display extension commands
 #if defined(VK_USE_PLATFORM_XLIB_XRANDR_EXT)
-    LOOKUP_GIPA(AcquireXlibDisplayEXT, false);
+    LOOKUP_GIPA(AcquireXlibDisplayEXT);
 #endif // VK_USE_PLATFORM_XLIB_XRANDR_EXT
 #if defined(VK_USE_PLATFORM_XLIB_XRANDR_EXT)
-    LOOKUP_GIPA(GetRandROutputDisplayEXT, false);
+    LOOKUP_GIPA(GetRandROutputDisplayEXT);
 #endif // VK_USE_PLATFORM_XLIB_XRANDR_EXT
 
     // ---- VK_EXT_display_surface_counter extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceSurfaceCapabilities2EXT, false);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfaceCapabilities2EXT);
 
     // ---- VK_MVK_ios_surface extension commands
 #if defined(VK_USE_PLATFORM_IOS_MVK)
-    LOOKUP_GIPA(CreateIOSSurfaceMVK, false);
+    LOOKUP_GIPA(CreateIOSSurfaceMVK);
 #endif // VK_USE_PLATFORM_IOS_MVK
 
     // ---- VK_MVK_macos_surface extension commands
 #if defined(VK_USE_PLATFORM_MACOS_MVK)
-    LOOKUP_GIPA(CreateMacOSSurfaceMVK, false);
+    LOOKUP_GIPA(CreateMacOSSurfaceMVK);
 #endif // VK_USE_PLATFORM_MACOS_MVK
 
     // ---- VK_EXT_debug_utils extension commands
-    LOOKUP_GIPA(CreateDebugUtilsMessengerEXT, false);
-    LOOKUP_GIPA(DestroyDebugUtilsMessengerEXT, false);
-    LOOKUP_GIPA(SubmitDebugUtilsMessageEXT, false);
+    LOOKUP_GIPA(CreateDebugUtilsMessengerEXT);
+    LOOKUP_GIPA(DestroyDebugUtilsMessengerEXT);
+    LOOKUP_GIPA(SubmitDebugUtilsMessageEXT);
 
     // ---- VK_EXT_sample_locations extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceMultisamplePropertiesEXT, false);
+    LOOKUP_GIPA(GetPhysicalDeviceMultisamplePropertiesEXT);
 
     // ---- VK_EXT_calibrated_timestamps extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceCalibrateableTimeDomainsEXT, false);
+    LOOKUP_GIPA(GetPhysicalDeviceCalibrateableTimeDomainsEXT);
 
     // ---- VK_FUCHSIA_imagepipe_surface extension commands
 #if defined(VK_USE_PLATFORM_FUCHSIA)
-    LOOKUP_GIPA(CreateImagePipeSurfaceFUCHSIA, false);
+    LOOKUP_GIPA(CreateImagePipeSurfaceFUCHSIA);
 #endif // VK_USE_PLATFORM_FUCHSIA
 
     // ---- VK_EXT_metal_surface extension commands
 #if defined(VK_USE_PLATFORM_METAL_EXT)
-    LOOKUP_GIPA(CreateMetalSurfaceEXT, false);
+    LOOKUP_GIPA(CreateMetalSurfaceEXT);
 #endif // VK_USE_PLATFORM_METAL_EXT
 
     // ---- VK_EXT_tooling_info extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceToolPropertiesEXT, false);
+    LOOKUP_GIPA(GetPhysicalDeviceToolPropertiesEXT);
 
     // ---- VK_NV_cooperative_matrix extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceCooperativeMatrixPropertiesNV, false);
+    LOOKUP_GIPA(GetPhysicalDeviceCooperativeMatrixPropertiesNV);
 
     // ---- VK_NV_coverage_reduction_mode extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV, false);
+    LOOKUP_GIPA(GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV);
 
     // ---- VK_EXT_full_screen_exclusive extension commands
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    LOOKUP_GIPA(GetPhysicalDeviceSurfacePresentModes2EXT, false);
+    LOOKUP_GIPA(GetPhysicalDeviceSurfacePresentModes2EXT);
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
     // ---- VK_EXT_headless_surface extension commands
-    LOOKUP_GIPA(CreateHeadlessSurfaceEXT, false);
+    LOOKUP_GIPA(CreateHeadlessSurfaceEXT);
 
     // ---- VK_EXT_acquire_drm_display extension commands
-    LOOKUP_GIPA(AcquireDrmDisplayEXT, false);
-    LOOKUP_GIPA(GetDrmDisplayEXT, false);
+    LOOKUP_GIPA(AcquireDrmDisplayEXT);
+    LOOKUP_GIPA(GetDrmDisplayEXT);
 
     // ---- VK_NV_acquire_winrt_display extension commands
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    LOOKUP_GIPA(AcquireWinrtDisplayNV, false);
+    LOOKUP_GIPA(AcquireWinrtDisplayNV);
 #endif // VK_USE_PLATFORM_WIN32_KHR
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-    LOOKUP_GIPA(GetWinrtDisplayNV, false);
+    LOOKUP_GIPA(GetWinrtDisplayNV);
 #endif // VK_USE_PLATFORM_WIN32_KHR
 
     // ---- VK_EXT_directfb_surface extension commands
 #if defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-    LOOKUP_GIPA(CreateDirectFBSurfaceEXT, false);
+    LOOKUP_GIPA(CreateDirectFBSurfaceEXT);
 #endif // VK_USE_PLATFORM_DIRECTFB_EXT
 #if defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-    LOOKUP_GIPA(GetPhysicalDeviceDirectFBPresentationSupportEXT, false);
+    LOOKUP_GIPA(GetPhysicalDeviceDirectFBPresentationSupportEXT);
 #endif // VK_USE_PLATFORM_DIRECTFB_EXT
 
     // ---- VK_QNX_screen_surface extension commands
 #if defined(VK_USE_PLATFORM_SCREEN_QNX)
-    LOOKUP_GIPA(CreateScreenSurfaceQNX, false);
+    LOOKUP_GIPA(CreateScreenSurfaceQNX);
 #endif // VK_USE_PLATFORM_SCREEN_QNX
 #if defined(VK_USE_PLATFORM_SCREEN_QNX)
-    LOOKUP_GIPA(GetPhysicalDeviceScreenPresentationSupportQNX, false);
+    LOOKUP_GIPA(GetPhysicalDeviceScreenPresentationSupportQNX);
 #endif // VK_USE_PLATFORM_SCREEN_QNX
 
     // ---- VK_NV_optical_flow extension commands
-    LOOKUP_GIPA(GetPhysicalDeviceOpticalFlowImageFormatsNV, false);
+    LOOKUP_GIPA(GetPhysicalDeviceOpticalFlowImageFormatsNV);
 
+#undef LOOKUP_REQUIRED_GIPA
 #undef LOOKUP_GIPA
 
     return true;
@@ -316,7 +323,7 @@ VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_icd_term *icd_t
 VKAPI_ATTR void VKAPI_CALL loader_init_device_dispatch_table(struct loader_dev_dispatch_table *dev_table, PFN_vkGetDeviceProcAddr gpa,
                                                              VkDevice dev) {
     VkLayerDispatchTable *table = &dev_table->core_dispatch;
-    assert(table->magic == DEVICE_DISP_TABLE_MAGIC_NUMBER);
+    if (table->magic != DEVICE_DISP_TABLE_MAGIC_NUMBER) { abort(); }
     for (uint32_t i = 0; i < MAX_NUM_UNKNOWN_EXTS; i++) dev_table->ext_dispatch[i] = (PFN_vkDevExt)vkDevExtError;
 
     // ---- Core 1_0 commands
@@ -713,6 +720,9 @@ VKAPI_ATTR void VKAPI_CALL loader_init_device_extension_dispatch_table(struct lo
     table->GetDeviceImageSubresourceLayoutKHR = (PFN_vkGetDeviceImageSubresourceLayoutKHR)gdpa(dev, "vkGetDeviceImageSubresourceLayoutKHR");
     table->GetImageSubresourceLayout2KHR = (PFN_vkGetImageSubresourceLayout2KHR)gdpa(dev, "vkGetImageSubresourceLayout2KHR");
 
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    table->GetCalibratedTimestampsKHR = (PFN_vkGetCalibratedTimestampsKHR)gdpa(dev, "vkGetCalibratedTimestampsKHR");
+
     // ---- VK_EXT_debug_marker extension commands
     table->DebugMarkerSetObjectTagEXT = (PFN_vkDebugMarkerSetObjectTagEXT)gdpa(dev, "vkDebugMarkerSetObjectTagEXT");
     table->DebugMarkerSetObjectNameEXT = (PFN_vkDebugMarkerSetObjectNameEXT)gdpa(dev, "vkDebugMarkerSetObjectNameEXT");
@@ -946,6 +956,14 @@ VKAPI_ATTR void VKAPI_CALL loader_init_device_extension_dispatch_table(struct lo
     table->SetPrivateDataEXT = (PFN_vkSetPrivateDataEXT)gdpa(dev, "vkSetPrivateDataEXT");
     table->GetPrivateDataEXT = (PFN_vkGetPrivateDataEXT)gdpa(dev, "vkGetPrivateDataEXT");
 
+    // ---- VK_NV_cuda_kernel_launch extension commands
+    table->CreateCudaModuleNV = (PFN_vkCreateCudaModuleNV)gdpa(dev, "vkCreateCudaModuleNV");
+    table->GetCudaModuleCacheNV = (PFN_vkGetCudaModuleCacheNV)gdpa(dev, "vkGetCudaModuleCacheNV");
+    table->CreateCudaFunctionNV = (PFN_vkCreateCudaFunctionNV)gdpa(dev, "vkCreateCudaFunctionNV");
+    table->DestroyCudaModuleNV = (PFN_vkDestroyCudaModuleNV)gdpa(dev, "vkDestroyCudaModuleNV");
+    table->DestroyCudaFunctionNV = (PFN_vkDestroyCudaFunctionNV)gdpa(dev, "vkDestroyCudaFunctionNV");
+    table->CmdCudaLaunchKernelNV = (PFN_vkCmdCudaLaunchKernelNV)gdpa(dev, "vkCmdCudaLaunchKernelNV");
+
     // ---- VK_EXT_metal_objects extension commands
 #if defined(VK_USE_PLATFORM_METAL_EXT)
     table->ExportMetalObjectsEXT = (PFN_vkExportMetalObjectsEXT)gdpa(dev, "vkExportMetalObjectsEXT");
@@ -1125,6 +1143,13 @@ VKAPI_ATTR void VKAPI_CALL loader_init_device_extension_dispatch_table(struct lo
     // ---- VK_QCOM_tile_properties extension commands
     table->GetFramebufferTilePropertiesQCOM = (PFN_vkGetFramebufferTilePropertiesQCOM)gdpa(dev, "vkGetFramebufferTilePropertiesQCOM");
     table->GetDynamicRenderingTilePropertiesQCOM = (PFN_vkGetDynamicRenderingTilePropertiesQCOM)gdpa(dev, "vkGetDynamicRenderingTilePropertiesQCOM");
+
+    // ---- VK_NV_low_latency2 extension commands
+    table->SetLatencySleepModeNV = (PFN_vkSetLatencySleepModeNV)gdpa(dev, "vkSetLatencySleepModeNV");
+    table->LatencySleepNV = (PFN_vkLatencySleepNV)gdpa(dev, "vkLatencySleepNV");
+    table->SetLatencyMarkerNV = (PFN_vkSetLatencyMarkerNV)gdpa(dev, "vkSetLatencyMarkerNV");
+    table->GetLatencyTimingsNV = (PFN_vkGetLatencyTimingsNV)gdpa(dev, "vkGetLatencyTimingsNV");
+    table->QueueNotifyOutOfBandNV = (PFN_vkQueueNotifyOutOfBandNV)gdpa(dev, "vkQueueNotifyOutOfBandNV");
 
     // ---- VK_EXT_attachment_feedback_loop_dynamic_state extension commands
     table->CmdSetAttachmentFeedbackLoopEnableEXT = (PFN_vkCmdSetAttachmentFeedbackLoopEnableEXT)gdpa(dev, "vkCmdSetAttachmentFeedbackLoopEnableEXT");
@@ -1311,6 +1336,9 @@ VKAPI_ATTR void VKAPI_CALL loader_init_instance_extension_dispatch_table(VkLayer
     // ---- VK_KHR_cooperative_matrix extension commands
     table->GetPhysicalDeviceCooperativeMatrixPropertiesKHR = (PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR)gpa(inst, "vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR");
 
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    table->GetPhysicalDeviceCalibrateableTimeDomainsKHR = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR)gpa(inst, "vkGetPhysicalDeviceCalibrateableTimeDomainsKHR");
+
     // ---- VK_EXT_debug_report extension commands
     table->CreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)gpa(inst, "vkCreateDebugReportCallbackEXT");
     table->DestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)gpa(inst, "vkDestroyDebugReportCallbackEXT");
@@ -1429,38 +1457,38 @@ void init_extension_device_proc_terminator_dispatch(struct loader_device *dev) {
     struct loader_device_terminator_dispatch* dispatch = &dev->loader_dispatch.extension_terminator_dispatch;
     PFN_vkGetDeviceProcAddr gpda = (PFN_vkGetDeviceProcAddr)dev->phys_dev_term->this_icd_term->dispatch.GetDeviceProcAddr;
     // ---- VK_KHR_swapchain extension commands
-    if (dev->extensions.khr_swapchain_enabled)
+    if (dev->driver_extensions.khr_swapchain_enabled)
        dispatch->CreateSwapchainKHR = (PFN_vkCreateSwapchainKHR)gpda(dev->icd_device, "vkCreateSwapchainKHR");
-    if (dev->extensions.khr_swapchain_enabled)
+    if (dev->driver_extensions.khr_swapchain_enabled)
        dispatch->GetDeviceGroupSurfacePresentModesKHR = (PFN_vkGetDeviceGroupSurfacePresentModesKHR)gpda(dev->icd_device, "vkGetDeviceGroupSurfacePresentModesKHR");
     // ---- VK_KHR_display_swapchain extension commands
-    if (dev->extensions.khr_display_swapchain_enabled)
+    if (dev->driver_extensions.khr_display_swapchain_enabled)
        dispatch->CreateSharedSwapchainsKHR = (PFN_vkCreateSharedSwapchainsKHR)gpda(dev->icd_device, "vkCreateSharedSwapchainsKHR");
     // ---- VK_EXT_debug_marker extension commands
-    if (dev->extensions.ext_debug_marker_enabled)
+    if (dev->driver_extensions.ext_debug_marker_enabled)
        dispatch->DebugMarkerSetObjectTagEXT = (PFN_vkDebugMarkerSetObjectTagEXT)gpda(dev->icd_device, "vkDebugMarkerSetObjectTagEXT");
-    if (dev->extensions.ext_debug_marker_enabled)
+    if (dev->driver_extensions.ext_debug_marker_enabled)
        dispatch->DebugMarkerSetObjectNameEXT = (PFN_vkDebugMarkerSetObjectNameEXT)gpda(dev->icd_device, "vkDebugMarkerSetObjectNameEXT");
     // ---- VK_EXT_debug_utils extension commands
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->SetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT)gpda(dev->icd_device, "vkSetDebugUtilsObjectNameEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->SetDebugUtilsObjectTagEXT = (PFN_vkSetDebugUtilsObjectTagEXT)gpda(dev->icd_device, "vkSetDebugUtilsObjectTagEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->QueueBeginDebugUtilsLabelEXT = (PFN_vkQueueBeginDebugUtilsLabelEXT)gpda(dev->icd_device, "vkQueueBeginDebugUtilsLabelEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->QueueEndDebugUtilsLabelEXT = (PFN_vkQueueEndDebugUtilsLabelEXT)gpda(dev->icd_device, "vkQueueEndDebugUtilsLabelEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->QueueInsertDebugUtilsLabelEXT = (PFN_vkQueueInsertDebugUtilsLabelEXT)gpda(dev->icd_device, "vkQueueInsertDebugUtilsLabelEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->CmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)gpda(dev->icd_device, "vkCmdBeginDebugUtilsLabelEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->CmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)gpda(dev->icd_device, "vkCmdEndDebugUtilsLabelEXT");
-    if (dev->extensions.ext_debug_utils_enabled)
+    if (dev->driver_extensions.ext_debug_utils_enabled)
        dispatch->CmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)gpda(dev->icd_device, "vkCmdInsertDebugUtilsLabelEXT");
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     // ---- VK_EXT_full_screen_exclusive extension commands
-    if (dev->extensions.ext_full_screen_exclusive_enabled && dev->extensions.khr_device_group_enabled)
+    if (dev->driver_extensions.ext_full_screen_exclusive_enabled && dev->driver_extensions.khr_device_group_enabled)
        dispatch->GetDeviceGroupSurfacePresentModes2EXT = (PFN_vkGetDeviceGroupSurfacePresentModes2EXT)gpda(dev->icd_device, "vkGetDeviceGroupSurfacePresentModes2EXT");
 #endif // VK_USE_PLATFORM_WIN32_KHR
 }
@@ -2438,9 +2466,12 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
     if (!strcmp(name, "GetDeviceImageSubresourceLayoutKHR")) return (void *)table->GetDeviceImageSubresourceLayoutKHR;
     if (!strcmp(name, "GetImageSubresourceLayout2KHR")) return (void *)table->GetImageSubresourceLayout2KHR;
 
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    if (!strcmp(name, "GetCalibratedTimestampsKHR")) return (void *)table->GetCalibratedTimestampsKHR;
+
     // ---- VK_EXT_debug_marker extension commands
-    if (!strcmp(name, "DebugMarkerSetObjectTagEXT")) return dev->extensions.ext_debug_marker_enabled ? (void *)DebugMarkerSetObjectTagEXT : NULL;
-    if (!strcmp(name, "DebugMarkerSetObjectNameEXT")) return dev->extensions.ext_debug_marker_enabled ? (void *)DebugMarkerSetObjectNameEXT : NULL;
+    if (!strcmp(name, "DebugMarkerSetObjectTagEXT")) return dev->layer_extensions.ext_debug_marker_enabled ? (void *)DebugMarkerSetObjectTagEXT : NULL;
+    if (!strcmp(name, "DebugMarkerSetObjectNameEXT")) return dev->layer_extensions.ext_debug_marker_enabled ? (void *)DebugMarkerSetObjectNameEXT : NULL;
     if (!strcmp(name, "CmdDebugMarkerBeginEXT")) return (void *)table->CmdDebugMarkerBeginEXT;
     if (!strcmp(name, "CmdDebugMarkerEndEXT")) return (void *)table->CmdDebugMarkerEndEXT;
     if (!strcmp(name, "CmdDebugMarkerInsertEXT")) return (void *)table->CmdDebugMarkerInsertEXT;
@@ -2502,8 +2533,8 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
     if (!strcmp(name, "SetHdrMetadataEXT")) return (void *)table->SetHdrMetadataEXT;
 
     // ---- VK_EXT_debug_utils extension commands
-    if (!strcmp(name, "SetDebugUtilsObjectNameEXT")) return dev->extensions.ext_debug_utils_enabled ? (void *)SetDebugUtilsObjectNameEXT : NULL;
-    if (!strcmp(name, "SetDebugUtilsObjectTagEXT")) return dev->extensions.ext_debug_utils_enabled ? (void *)SetDebugUtilsObjectTagEXT : NULL;
+    if (!strcmp(name, "SetDebugUtilsObjectNameEXT")) return dev->layer_extensions.ext_debug_utils_enabled ? (void *)SetDebugUtilsObjectNameEXT : NULL;
+    if (!strcmp(name, "SetDebugUtilsObjectTagEXT")) return dev->layer_extensions.ext_debug_utils_enabled ? (void *)SetDebugUtilsObjectTagEXT : NULL;
     if (!strcmp(name, "QueueBeginDebugUtilsLabelEXT")) return (void *)table->QueueBeginDebugUtilsLabelEXT;
     if (!strcmp(name, "QueueEndDebugUtilsLabelEXT")) return (void *)table->QueueEndDebugUtilsLabelEXT;
     if (!strcmp(name, "QueueInsertDebugUtilsLabelEXT")) return (void *)table->QueueInsertDebugUtilsLabelEXT;
@@ -2670,6 +2701,14 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
     if (!strcmp(name, "DestroyPrivateDataSlotEXT")) return (void *)table->DestroyPrivateDataSlotEXT;
     if (!strcmp(name, "SetPrivateDataEXT")) return (void *)table->SetPrivateDataEXT;
     if (!strcmp(name, "GetPrivateDataEXT")) return (void *)table->GetPrivateDataEXT;
+
+    // ---- VK_NV_cuda_kernel_launch extension commands
+    if (!strcmp(name, "CreateCudaModuleNV")) return (void *)table->CreateCudaModuleNV;
+    if (!strcmp(name, "GetCudaModuleCacheNV")) return (void *)table->GetCudaModuleCacheNV;
+    if (!strcmp(name, "CreateCudaFunctionNV")) return (void *)table->CreateCudaFunctionNV;
+    if (!strcmp(name, "DestroyCudaModuleNV")) return (void *)table->DestroyCudaModuleNV;
+    if (!strcmp(name, "DestroyCudaFunctionNV")) return (void *)table->DestroyCudaFunctionNV;
+    if (!strcmp(name, "CmdCudaLaunchKernelNV")) return (void *)table->CmdCudaLaunchKernelNV;
 
     // ---- VK_EXT_metal_objects extension commands
 #if defined(VK_USE_PLATFORM_METAL_EXT)
@@ -2850,6 +2889,13 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_device_dispatch_table(const VkLayerDis
     // ---- VK_QCOM_tile_properties extension commands
     if (!strcmp(name, "GetFramebufferTilePropertiesQCOM")) return (void *)table->GetFramebufferTilePropertiesQCOM;
     if (!strcmp(name, "GetDynamicRenderingTilePropertiesQCOM")) return (void *)table->GetDynamicRenderingTilePropertiesQCOM;
+
+    // ---- VK_NV_low_latency2 extension commands
+    if (!strcmp(name, "SetLatencySleepModeNV")) return (void *)table->SetLatencySleepModeNV;
+    if (!strcmp(name, "LatencySleepNV")) return (void *)table->LatencySleepNV;
+    if (!strcmp(name, "SetLatencyMarkerNV")) return (void *)table->SetLatencyMarkerNV;
+    if (!strcmp(name, "GetLatencyTimingsNV")) return (void *)table->GetLatencyTimingsNV;
+    if (!strcmp(name, "QueueNotifyOutOfBandNV")) return (void *)table->QueueNotifyOutOfBandNV;
 
     // ---- VK_EXT_attachment_feedback_loop_dynamic_state extension commands
     if (!strcmp(name, "CmdSetAttachmentFeedbackLoopEnableEXT")) return (void *)table->CmdSetAttachmentFeedbackLoopEnableEXT;
@@ -3040,6 +3086,9 @@ VKAPI_ATTR void* VKAPI_CALL loader_lookup_instance_dispatch_table(const VkLayerI
 
     // ---- VK_KHR_cooperative_matrix extension commands
     if (!strcmp(name, "GetPhysicalDeviceCooperativeMatrixPropertiesKHR")) return (void *)table->GetPhysicalDeviceCooperativeMatrixPropertiesKHR;
+
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    if (!strcmp(name, "GetPhysicalDeviceCalibrateableTimeDomainsKHR")) return (void *)table->GetPhysicalDeviceCalibrateableTimeDomainsKHR;
 
     // ---- VK_EXT_debug_report extension commands
     if (!strcmp(name, "CreateDebugReportCallbackEXT")) return (void *)table->CreateDebugReportCallbackEXT;
@@ -4809,6 +4858,55 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceCooperativeMatrixProp
 }
 
 
+// ---- VK_KHR_calibrated_timestamps extension trampoline/terminators
+
+VKAPI_ATTR VkResult VKAPI_CALL GetPhysicalDeviceCalibrateableTimeDomainsKHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pTimeDomainCount,
+    VkTimeDomainKHR*                            pTimeDomains) {
+    const VkLayerInstanceDispatchTable *disp;
+    VkPhysicalDevice unwrapped_phys_dev = loader_unwrap_physical_device(physicalDevice);
+    if (VK_NULL_HANDLE == unwrapped_phys_dev) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkGetPhysicalDeviceCalibrateableTimeDomainsKHR: Invalid physicalDevice "
+                   "[VUID-vkGetPhysicalDeviceCalibrateableTimeDomainsKHR-physicalDevice-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp = loader_get_instance_layer_dispatch(physicalDevice);
+    return disp->GetPhysicalDeviceCalibrateableTimeDomainsKHR(unwrapped_phys_dev, pTimeDomainCount, pTimeDomains);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceCalibrateableTimeDomainsKHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pTimeDomainCount,
+    VkTimeDomainKHR*                            pTimeDomains) {
+    struct loader_physical_device_term *phys_dev_term = (struct loader_physical_device_term *)physicalDevice;
+    struct loader_icd_term *icd_term = phys_dev_term->this_icd_term;
+    if (NULL == icd_term->dispatch.GetPhysicalDeviceCalibrateableTimeDomainsKHR) {
+        loader_log(icd_term->this_instance, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT, 0,
+                   "ICD associated with VkPhysicalDevice does not support GetPhysicalDeviceCalibrateableTimeDomainsKHR");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return icd_term->dispatch.GetPhysicalDeviceCalibrateableTimeDomainsKHR(phys_dev_term->phys_dev, pTimeDomainCount, pTimeDomains);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL GetCalibratedTimestampsKHR(
+    VkDevice                                    device,
+    uint32_t                                    timestampCount,
+    const VkCalibratedTimestampInfoKHR*         pTimestampInfos,
+    uint64_t*                                   pTimestamps,
+    uint64_t*                                   pMaxDeviation) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkGetCalibratedTimestampsKHR: Invalid device "
+                   "[VUID-vkGetCalibratedTimestampsKHR-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return disp->GetCalibratedTimestampsKHR(device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
+}
+
+
 // ---- VK_EXT_debug_marker extension trampoline/terminators
 
 VKAPI_ATTR VkResult VKAPI_CALL DebugMarkerSetObjectTagEXT(
@@ -6333,7 +6431,7 @@ VKAPI_ATTR void VKAPI_CALL CmdWriteBufferMarkerAMD(
 VKAPI_ATTR VkResult VKAPI_CALL GetPhysicalDeviceCalibrateableTimeDomainsEXT(
     VkPhysicalDevice                            physicalDevice,
     uint32_t*                                   pTimeDomainCount,
-    VkTimeDomainEXT*                            pTimeDomains) {
+    VkTimeDomainKHR*                            pTimeDomains) {
     const VkLayerInstanceDispatchTable *disp;
     VkPhysicalDevice unwrapped_phys_dev = loader_unwrap_physical_device(physicalDevice);
     if (VK_NULL_HANDLE == unwrapped_phys_dev) {
@@ -6349,7 +6447,7 @@ VKAPI_ATTR VkResult VKAPI_CALL GetPhysicalDeviceCalibrateableTimeDomainsEXT(
 VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
     VkPhysicalDevice                            physicalDevice,
     uint32_t*                                   pTimeDomainCount,
-    VkTimeDomainEXT*                            pTimeDomains) {
+    VkTimeDomainKHR*                            pTimeDomains) {
     struct loader_physical_device_term *phys_dev_term = (struct loader_physical_device_term *)physicalDevice;
     struct loader_icd_term *icd_term = phys_dev_term->this_icd_term;
     if (NULL == icd_term->dispatch.GetPhysicalDeviceCalibrateableTimeDomainsEXT) {
@@ -6363,7 +6461,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetPhysicalDeviceCalibrateableTimeDoma
 VKAPI_ATTR VkResult VKAPI_CALL GetCalibratedTimestampsEXT(
     VkDevice                                    device,
     uint32_t                                    timestampCount,
-    const VkCalibratedTimestampInfoEXT*         pTimestampInfos,
+    const VkCalibratedTimestampInfoKHR*         pTimestampInfos,
     uint64_t*                                   pTimestamps,
     uint64_t*                                   pMaxDeviation) {
     const VkLayerDispatchTable *disp = loader_get_dispatch(device);
@@ -7167,7 +7265,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_AcquireDrmDisplayEXT(
     if (NULL == icd_term->dispatch.AcquireDrmDisplayEXT) {
         loader_log(icd_term->this_instance, VULKAN_LOADER_ERROR_BIT, 0,
                    "ICD associated with VkPhysicalDevice does not support AcquireDrmDisplayEXT");
-        return VK_ERROR_INITIALIZATION_FAILED;
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
     return icd_term->dispatch.AcquireDrmDisplayEXT(phys_dev_term->phys_dev, drmFd, display);
 }
@@ -7199,7 +7297,7 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_GetDrmDisplayEXT(
     if (NULL == icd_term->dispatch.GetDrmDisplayEXT) {
         loader_log(icd_term->this_instance, VULKAN_LOADER_ERROR_BIT, 0,
                    "ICD associated with VkPhysicalDevice does not support GetDrmDisplayEXT");
-        return VK_ERROR_INITIALIZATION_FAILED;
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
     return icd_term->dispatch.GetDrmDisplayEXT(phys_dev_term->phys_dev, drmFd, connectorId, display);
 }
@@ -7266,6 +7364,95 @@ VKAPI_ATTR void VKAPI_CALL GetPrivateDataEXT(
         abort(); /* Intentionally fail so user can correct issue. */
     }
     disp->GetPrivateDataEXT(device, objectType, objectHandle, privateDataSlot, pData);
+}
+
+
+// ---- VK_NV_cuda_kernel_launch extension trampoline/terminators
+
+VKAPI_ATTR VkResult VKAPI_CALL CreateCudaModuleNV(
+    VkDevice                                    device,
+    const VkCudaModuleCreateInfoNV*             pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkCudaModuleNV*                             pModule) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkCreateCudaModuleNV: Invalid device "
+                   "[VUID-vkCreateCudaModuleNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return disp->CreateCudaModuleNV(device, pCreateInfo, pAllocator, pModule);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL GetCudaModuleCacheNV(
+    VkDevice                                    device,
+    VkCudaModuleNV                              module,
+    size_t*                                     pCacheSize,
+    void*                                       pCacheData) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkGetCudaModuleCacheNV: Invalid device "
+                   "[VUID-vkGetCudaModuleCacheNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return disp->GetCudaModuleCacheNV(device, module, pCacheSize, pCacheData);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL CreateCudaFunctionNV(
+    VkDevice                                    device,
+    const VkCudaFunctionCreateInfoNV*           pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkCudaFunctionNV*                           pFunction) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkCreateCudaFunctionNV: Invalid device "
+                   "[VUID-vkCreateCudaFunctionNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return disp->CreateCudaFunctionNV(device, pCreateInfo, pAllocator, pFunction);
+}
+
+VKAPI_ATTR void VKAPI_CALL DestroyCudaModuleNV(
+    VkDevice                                    device,
+    VkCudaModuleNV                              module,
+    const VkAllocationCallbacks*                pAllocator) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkDestroyCudaModuleNV: Invalid device "
+                   "[VUID-vkDestroyCudaModuleNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->DestroyCudaModuleNV(device, module, pAllocator);
+}
+
+VKAPI_ATTR void VKAPI_CALL DestroyCudaFunctionNV(
+    VkDevice                                    device,
+    VkCudaFunctionNV                            function,
+    const VkAllocationCallbacks*                pAllocator) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkDestroyCudaFunctionNV: Invalid device "
+                   "[VUID-vkDestroyCudaFunctionNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->DestroyCudaFunctionNV(device, function, pAllocator);
+}
+
+VKAPI_ATTR void VKAPI_CALL CmdCudaLaunchKernelNV(
+    VkCommandBuffer                             commandBuffer,
+    const VkCudaLaunchInfoNV*                   pLaunchInfo) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(commandBuffer);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkCmdCudaLaunchKernelNV: Invalid commandBuffer "
+                   "[VUID-vkCmdCudaLaunchKernelNV-commandBuffer-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->CmdCudaLaunchKernelNV(commandBuffer, pLaunchInfo);
 }
 
 
@@ -8962,6 +9149,78 @@ VKAPI_ATTR VkResult VKAPI_CALL GetDynamicRenderingTilePropertiesQCOM(
 }
 
 
+// ---- VK_NV_low_latency2 extension trampoline/terminators
+
+VKAPI_ATTR VkResult VKAPI_CALL SetLatencySleepModeNV(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    const VkLatencySleepModeInfoNV*             pSleepModeInfo) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkSetLatencySleepModeNV: Invalid device "
+                   "[VUID-vkSetLatencySleepModeNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return disp->SetLatencySleepModeNV(device, swapchain, pSleepModeInfo);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL LatencySleepNV(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    const VkLatencySleepInfoNV*                 pSleepInfo) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkLatencySleepNV: Invalid device "
+                   "[VUID-vkLatencySleepNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    return disp->LatencySleepNV(device, swapchain, pSleepInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL SetLatencyMarkerNV(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    const VkSetLatencyMarkerInfoNV*             pLatencyMarkerInfo) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkSetLatencyMarkerNV: Invalid device "
+                   "[VUID-vkSetLatencyMarkerNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->SetLatencyMarkerNV(device, swapchain, pLatencyMarkerInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL GetLatencyTimingsNV(
+    VkDevice                                    device,
+    VkSwapchainKHR                              swapchain,
+    VkGetLatencyMarkerInfoNV*                   pLatencyMarkerInfo) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(device);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkGetLatencyTimingsNV: Invalid device "
+                   "[VUID-vkGetLatencyTimingsNV-device-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->GetLatencyTimingsNV(device, swapchain, pLatencyMarkerInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL QueueNotifyOutOfBandNV(
+    VkQueue                                     queue,
+    const VkOutOfBandQueueTypeInfoNV*           pQueueTypeInfo) {
+    const VkLayerDispatchTable *disp = loader_get_dispatch(queue);
+    if (NULL == disp) {
+        loader_log(NULL, VULKAN_LOADER_FATAL_ERROR_BIT | VULKAN_LOADER_ERROR_BIT | VULKAN_LOADER_VALIDATION_BIT, 0,
+                   "vkQueueNotifyOutOfBandNV: Invalid queue "
+                   "[VUID-vkQueueNotifyOutOfBandNV-queue-parameter]");
+        abort(); /* Intentionally fail so user can correct issue. */
+    }
+    disp->QueueNotifyOutOfBandNV(queue, pQueueTypeInfo);
+}
+
+
 // ---- VK_EXT_attachment_feedback_loop_dynamic_state extension trampoline/terminators
 
 VKAPI_ATTR void VKAPI_CALL CmdSetAttachmentFeedbackLoopEnableEXT(
@@ -9958,6 +10217,16 @@ bool extension_instance_gpa(struct loader_instance *ptr_instance, const char *na
         return true;
     }
 
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    if (!strcmp("vkGetPhysicalDeviceCalibrateableTimeDomainsKHR", name)) {
+        *addr = (void *)GetPhysicalDeviceCalibrateableTimeDomainsKHR;
+        return true;
+    }
+    if (!strcmp("vkGetCalibratedTimestampsKHR", name)) {
+        *addr = (void *)GetCalibratedTimestampsKHR;
+        return true;
+    }
+
     // ---- VK_EXT_debug_marker extension commands
     if (!strcmp("vkDebugMarkerSetObjectTagEXT", name)) {
         *addr = (void *)DebugMarkerSetObjectTagEXT;
@@ -10682,6 +10951,32 @@ bool extension_instance_gpa(struct loader_instance *ptr_instance, const char *na
         return true;
     }
 
+    // ---- VK_NV_cuda_kernel_launch extension commands
+    if (!strcmp("vkCreateCudaModuleNV", name)) {
+        *addr = (void *)CreateCudaModuleNV;
+        return true;
+    }
+    if (!strcmp("vkGetCudaModuleCacheNV", name)) {
+        *addr = (void *)GetCudaModuleCacheNV;
+        return true;
+    }
+    if (!strcmp("vkCreateCudaFunctionNV", name)) {
+        *addr = (void *)CreateCudaFunctionNV;
+        return true;
+    }
+    if (!strcmp("vkDestroyCudaModuleNV", name)) {
+        *addr = (void *)DestroyCudaModuleNV;
+        return true;
+    }
+    if (!strcmp("vkDestroyCudaFunctionNV", name)) {
+        *addr = (void *)DestroyCudaFunctionNV;
+        return true;
+    }
+    if (!strcmp("vkCmdCudaLaunchKernelNV", name)) {
+        *addr = (void *)CmdCudaLaunchKernelNV;
+        return true;
+    }
+
     // ---- VK_EXT_metal_objects extension commands
 #if defined(VK_USE_PLATFORM_METAL_EXT)
     if (!strcmp("vkExportMetalObjectsEXT", name)) {
@@ -11198,6 +11493,28 @@ bool extension_instance_gpa(struct loader_instance *ptr_instance, const char *na
         return true;
     }
 
+    // ---- VK_NV_low_latency2 extension commands
+    if (!strcmp("vkSetLatencySleepModeNV", name)) {
+        *addr = (void *)SetLatencySleepModeNV;
+        return true;
+    }
+    if (!strcmp("vkLatencySleepNV", name)) {
+        *addr = (void *)LatencySleepNV;
+        return true;
+    }
+    if (!strcmp("vkSetLatencyMarkerNV", name)) {
+        *addr = (void *)SetLatencyMarkerNV;
+        return true;
+    }
+    if (!strcmp("vkGetLatencyTimingsNV", name)) {
+        *addr = (void *)GetLatencyTimingsNV;
+        return true;
+    }
+    if (!strcmp("vkQueueNotifyOutOfBandNV", name)) {
+        *addr = (void *)QueueNotifyOutOfBandNV;
+        return true;
+    }
+
     // ---- VK_EXT_attachment_feedback_loop_dynamic_state extension commands
     if (!strcmp("vkCmdSetAttachmentFeedbackLoopEnableEXT", name)) {
         *addr = (void *)CmdSetAttachmentFeedbackLoopEnableEXT;
@@ -11385,77 +11702,77 @@ PFN_vkVoidFunction get_extension_device_proc_terminator(struct loader_device *de
     // ---- VK_KHR_swapchain extension commands
     if (!strcmp(name, "CreateSwapchainKHR")) {
         *found_name = true;
-        return dev->extensions.khr_swapchain_enabled ?
+        return dev->driver_extensions.khr_swapchain_enabled ?
             (PFN_vkVoidFunction)terminator_CreateSwapchainKHR : NULL;
     }
     if (!strcmp(name, "GetDeviceGroupSurfacePresentModesKHR")) {
         *found_name = true;
-        return dev->extensions.khr_swapchain_enabled ?
+        return dev->driver_extensions.khr_swapchain_enabled ?
             (PFN_vkVoidFunction)terminator_GetDeviceGroupSurfacePresentModesKHR : NULL;
     }
     // ---- VK_KHR_display_swapchain extension commands
     if (!strcmp(name, "CreateSharedSwapchainsKHR")) {
         *found_name = true;
-        return dev->extensions.khr_display_swapchain_enabled ?
+        return dev->driver_extensions.khr_display_swapchain_enabled ?
             (PFN_vkVoidFunction)terminator_CreateSharedSwapchainsKHR : NULL;
     }
     // ---- VK_EXT_debug_marker extension commands
     if (!strcmp(name, "DebugMarkerSetObjectTagEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_marker_enabled ?
+        return dev->driver_extensions.ext_debug_marker_enabled ?
             (PFN_vkVoidFunction)terminator_DebugMarkerSetObjectTagEXT : NULL;
     }
     if (!strcmp(name, "DebugMarkerSetObjectNameEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_marker_enabled ?
+        return dev->driver_extensions.ext_debug_marker_enabled ?
             (PFN_vkVoidFunction)terminator_DebugMarkerSetObjectNameEXT : NULL;
     }
     // ---- VK_EXT_debug_utils extension commands
     if (!strcmp(name, "SetDebugUtilsObjectNameEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_SetDebugUtilsObjectNameEXT : NULL;
     }
     if (!strcmp(name, "SetDebugUtilsObjectTagEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_SetDebugUtilsObjectTagEXT : NULL;
     }
     if (!strcmp(name, "QueueBeginDebugUtilsLabelEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_QueueBeginDebugUtilsLabelEXT : NULL;
     }
     if (!strcmp(name, "QueueEndDebugUtilsLabelEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_QueueEndDebugUtilsLabelEXT : NULL;
     }
     if (!strcmp(name, "QueueInsertDebugUtilsLabelEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_QueueInsertDebugUtilsLabelEXT : NULL;
     }
     if (!strcmp(name, "CmdBeginDebugUtilsLabelEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_CmdBeginDebugUtilsLabelEXT : NULL;
     }
     if (!strcmp(name, "CmdEndDebugUtilsLabelEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_CmdEndDebugUtilsLabelEXT : NULL;
     }
     if (!strcmp(name, "CmdInsertDebugUtilsLabelEXT")) {
         *found_name = true;
-        return dev->extensions.ext_debug_utils_enabled ?
+        return dev->driver_extensions.ext_debug_utils_enabled ?
             (PFN_vkVoidFunction)terminator_CmdInsertDebugUtilsLabelEXT : NULL;
     }
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     // ---- VK_EXT_full_screen_exclusive extension commands
     if (!strcmp(name, "GetDeviceGroupSurfacePresentModes2EXT")) {
         *found_name = true;
-        return dev->extensions.ext_full_screen_exclusive_enabled && dev->extensions.khr_device_group_enabled ?
+        return dev->driver_extensions.ext_full_screen_exclusive_enabled && dev->driver_extensions.khr_device_group_enabled ?
             (PFN_vkVoidFunction)terminator_GetDeviceGroupSurfacePresentModes2EXT : NULL;
     }
 #endif // VK_USE_PLATFORM_WIN32_KHR
@@ -11602,6 +11919,9 @@ const VkLayerInstanceDispatchTable instance_disp = {
 
     // ---- VK_KHR_cooperative_matrix extension commands
     .GetPhysicalDeviceCooperativeMatrixPropertiesKHR = terminator_GetPhysicalDeviceCooperativeMatrixPropertiesKHR,
+
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    .GetPhysicalDeviceCalibrateableTimeDomainsKHR = terminator_GetPhysicalDeviceCalibrateableTimeDomainsKHR,
 
     // ---- VK_EXT_debug_report extension commands
     .CreateDebugReportCallbackEXT = terminator_CreateDebugReportCallbackEXT,
@@ -11783,5 +12103,6 @@ const char *const LOADER_INSTANCE_EXTENSIONS[] = {
 #endif // VK_USE_PLATFORM_SCREEN_QNX
                                                   VK_GOOGLE_SURFACELESS_QUERY_EXTENSION_NAME,
                                                   VK_LUNARG_DIRECT_DRIVER_LOADING_EXTENSION_NAME,
+                                                  VK_EXT_LAYER_SETTINGS_EXTENSION_NAME,
                                                   NULL };
-
+// clang-format on

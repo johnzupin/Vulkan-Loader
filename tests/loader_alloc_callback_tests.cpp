@@ -338,7 +338,7 @@ TEST(Allocation, DeviceButNotInstance) {
                                  .add_queue_family_properties({{VK_QUEUE_GRAPHICS_BIT, 1, 0, {1, 1, 1}}, false})
                                  .finish());
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -392,7 +392,7 @@ TEST(Allocation, CreateInstanceIntentionalAllocFail) {
     FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -416,13 +416,58 @@ TEST(Allocation, CreateInstanceIntentionalAllocFail) {
     }
 }
 
+// Test failure during vkCreateInstance to make sure we don't leak memory if
+// one of the out-of-memory conditions trigger and there are invalid jsons in the same folder
+TEST(Allocation, CreateInstanceIntentionalAllocFailInvalidManifests) {
+    FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+
+    std::vector<std::string> invalid_jsons;
+    invalid_jsons.push_back(",");
+    invalid_jsons.push_back("{},[]");
+    invalid_jsons.push_back("{ \"foo\":\"bar\", }");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": [], },");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": [{},] },");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": {\"fee\"} },");
+    invalid_jsons.push_back("{\"\":\"bar\", \"baz\": {}");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": {\"fee\":1234, true, \"ab\":\"bc\"} },");
+
+    for (size_t i = 0; i < invalid_jsons.size(); i++) {
+        auto file_name = std::string("invalid_implicit_layer_") + std::to_string(i) + ".json";
+        fs::path new_path = env.get_folder(ManifestLocation::implicit_layer).write_manifest(file_name, invalid_jsons[i]);
+        env.platform_shim->add_manifest(ManifestCategory::implicit_layer, new_path);
+    }
+
+    const char* layer_name = "VkLayerImplicit0";
+    env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
+                                                         .set_name(layer_name)
+                                                         .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
+                                                         .set_disable_environment("DISABLE_ENV")),
+                           "test_layer.json");
+
+    size_t fail_index = 0;
+    VkResult result = VK_ERROR_OUT_OF_HOST_MEMORY;
+    while (result == VK_ERROR_OUT_OF_HOST_MEMORY && fail_index <= 10000) {
+        MemoryTracker tracker({false, 0, true, fail_index});
+
+        VkInstance instance;
+        InstanceCreateInfo inst_create_info{};
+        result = env.vulkan_functions.vkCreateInstance(inst_create_info.get(), tracker.get(), &instance);
+        if (result == VK_SUCCESS) {
+            env.vulkan_functions.vkDestroyInstance(instance, tracker.get());
+        }
+        ASSERT_TRUE(tracker.empty());
+        fail_index++;
+    }
+}
+
 // Test failure during vkCreateInstance & surface creation to make sure we don't leak memory if
 // one of the out-of-memory conditions trigger.
 TEST(Allocation, CreateSurfaceIntentionalAllocFail) {
     FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -467,7 +512,7 @@ TEST(Allocation, CreateInstanceIntentionalAllocFailWithSettingsFilePresent) {
     FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -504,7 +549,7 @@ TEST(Allocation, CreateSurfaceIntentionalAllocFailWithSettingsFilePresent) {
     FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -555,7 +600,7 @@ TEST(Allocation, DriverEnvVarIntentionalAllocFail) {
     FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
     env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2}.set_discovery_type(ManifestDiscoveryType::env_var));
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -594,7 +639,7 @@ TEST(Allocation, CreateDeviceIntentionalAllocFail) {
                                  .add_queue_family_properties({{VK_QUEUE_GRAPHICS_BIT, 1, 0, {1, 1, 1}}, false})
                                  .finish());
 
-    const char* layer_name = "VK_LAYER_VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -783,7 +828,7 @@ TEST(TryLoadWrongBinaries, CreateInstanceIntentionalAllocFail) {
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
     env.add_icd(TestICDDetails(CURRENT_PLATFORM_DUMMY_BINARY_WRONG_TYPE).set_is_fake(true));
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -814,7 +859,7 @@ TEST(Allocation, EnumeratePhysicalDevicesIntentionalAllocFail) {
     FrameworkEnvironment env{FrameworkSettings{}.set_log_filter("error,warn")};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
@@ -932,7 +977,7 @@ TEST(Allocation, CreateInstanceDeviceWithDXGIDriverIntentionalAllocFail) {
             .add_queue_family_properties({{VK_QUEUE_GRAPHICS_BIT, 1, 0, {1, 1, 1}}, false});
     }
 
-    const char* layer_name = "VkLayerImplicit0";
+    const char* layer_name = "VK_LAYER_implicit";
     env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
                                                          .set_name(layer_name)
                                                          .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)

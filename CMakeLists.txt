@@ -16,7 +16,7 @@
 # ~~~
 cmake_minimum_required(VERSION 3.17.2)
 
-project(VULKAN_LOADER VERSION 1.3.261)
+project(VULKAN_LOADER VERSION 1.3.273)
 
 add_subdirectory(scripts)
 
@@ -30,24 +30,13 @@ if (UNIX)
     option(LOADER_ENABLE_THREAD_SANITIZER "Linux & macOS only: Advanced thread checking" OFF)
 endif()
 
-if(APPLE)
-    option(BUILD_STATIC_LOADER "Build a loader that can be statically linked" OFF)
-endif()
-
 if(WIN32)
     # Optional: Allow specify the exact version used in the loader dll
     # Format is major.minor.patch.build
     set(BUILD_DLL_VERSIONINFO "" CACHE STRING "Set the version to be used in the loader.rc file. Default value is the currently generated header version")
 endif()
 
-if(BUILD_STATIC_LOADER)
-    message(WARNING "The BUILD_STATIC_LOADER option has been set. Note that this will only work on MacOS and is not supported "
-        "or tested as part of the loader. Use it at your own risk.")
-endif()
-
-if (NOT TARGET Vulkan::Headers)
-    find_package(VulkanHeaders REQUIRED CONFIG QUIET)
-endif()
+find_package(VulkanHeaders CONFIG QUIET)
 
 include(GNUInstallDirs)
 
@@ -99,15 +88,20 @@ add_library(platform_wsi INTERFACE)
 if(WIN32)
     target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_WIN32_KHR)
 elseif(ANDROID)
-    target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_ANDROID_KHR)
+    message(FATAL_ERROR "Android build not supported!")
 elseif(APPLE)
-    target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_MACOS_MVK VK_USE_PLATFORM_METAL_EXT)
-elseif(UNIX AND NOT APPLE) # i.e.: Linux
+    target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_METAL_EXT)
+    if (IOS)
+        target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_IOS_MVK)
+    endif()
+    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_MACOS_MVK)
+    endif()
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux|BSD|DragonFly|GNU")
     option(BUILD_WSI_XCB_SUPPORT "Build XCB WSI support" ON)
     option(BUILD_WSI_XLIB_SUPPORT "Build Xlib WSI support" ON)
     option(BUILD_WSI_WAYLAND_SUPPORT "Build Wayland WSI support" ON)
     option(BUILD_WSI_DIRECTFB_SUPPORT "Build DirectFB WSI support" OFF)
-    option(BUILD_WSI_SCREEN_QNX_SUPPORT "Build QNX Screen WSI support" OFF)
 
     find_package(PkgConfig REQUIRED QUIET) # Use PkgConfig to find Linux system libraries
 
@@ -129,16 +123,15 @@ elseif(UNIX AND NOT APPLE) # i.e.: Linux
         target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_DIRECTFB_EXT)
         target_link_libraries(platform_wsi INTERFACE PkgConfig::DirectFB)
     endif()
-    if(BUILD_WSI_SCREEN_QNX_SUPPORT)
-        # Part of OS, no additional include directories are required
-        target_compile_definitions(platform_wsi INTERFACE VK_USE_PLATFORM_SCREEN_QNX)
-    endif()
+elseif(CMAKE_SYSTEM_NAME MATCHES "QNX")
+    message(FATAL_ERROR "See BUILD.md for QNX build")
+elseif(CMAKE_SYSTEM_NAME MATCHES "Fuchsia")
+    message(FATAL_ERROR "Fuchsia uses Chromium build. See BUILD.gn")
 else()
     message(FATAL_ERROR "Unsupported Platform!")
 endif()
 
 add_library(loader_common_options INTERFACE)
-target_compile_definitions(loader_common_options INTERFACE API_NAME="Vulkan")
 target_link_libraries(loader_common_options INTERFACE platform_wsi)
 
 # Enable beta Vulkan extensions
@@ -159,12 +152,12 @@ option(ENABLE_WERROR "Enable warnings as errors" ON)
 # Set warnings as errors and the main diagnostic flags
 # Must be set first so the warning silencing later on works properly
 # Note that clang-cl.exe should use MSVC flavor flags, not GNU
-if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND "${CMAKE_CXX_SIMULATE_ID}" MATCHES "MSVC"))
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT MATCHES "MSVC"))
     if (ENABLE_WERROR)
         target_compile_options(loader_common_options INTERFACE /WX)
     endif()
     target_compile_options(loader_common_options INTERFACE /W4)
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     # using GCC or Clang with the regular front end
     if (ENABLE_WERROR)
         target_compile_options(loader_common_options INTERFACE -Werror)
@@ -172,15 +165,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "C
     target_compile_options(loader_common_options INTERFACE -Wall -Wextra)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     target_compile_options(loader_common_options INTERFACE -Wno-missing-field-initializers)
-
-    # need to prepend /clang: to compiler arguments when using clang-cl
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND "${CMAKE_CXX_SIMULATE_ID}" MATCHES "MSVC")
-        target_compile_options(loader_common_options INTERFACE /clang:-fno-strict-aliasing /clang:-fno-builtin-memcmp)
-    else()
-        target_compile_options(loader_common_options INTERFACE -fno-strict-aliasing -fno-builtin-memcmp)
-    endif()
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(loader_common_options INTERFACE -Wno-stringop-truncation -Wno-stringop-overflow)
@@ -196,12 +182,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang
     target_compile_options(loader_common_options INTERFACE -Wpointer-arith)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND "${CMAKE_CXX_SIMULATE_ID}" MATCHES "MSVC"))
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC" OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT MATCHES "MSVC"))
+    # /sdl: Enable additional security checks
     # /GR-: Disable RTTI
     # /guard:cf: Enable control flow guard
     # /wd4152: Disable warning on conversion of a function pointer to a data pointer
     # /wd4201: Disable warning on anonymous struct/unions
-    target_compile_options(loader_common_options INTERFACE /GR- /guard:cf /wd4152 /wd4201)
+    target_compile_options(loader_common_options INTERFACE /sdl /GR- /guard:cf /wd4152 /wd4201)
 
     # Enable control flow guard
     target_link_options(loader_common_options INTERFACE "LINKER:/guard:cf")
@@ -214,21 +201,22 @@ endif()
 # Add git branch and tag info in debug mode
 target_compile_definitions(loader_common_options INTERFACE $<$<CONFIG:DEBUG>:DEBUG;GIT_BRANCH_NAME="${GIT_BRANCH_NAME}";GIT_TAG_INFO="${GIT_TAG_INFO}">)
 
-# Check for the existance of the secure_getenv or __secure_getenv commands
-include(CheckFunctionExists)
-include(CheckIncludeFile)
+if (NOT (WIN32 OR APPLE))
+    # Check for the existance of the secure_getenv or __secure_getenv commands
+    include(CheckFunctionExists)
 
-check_function_exists(secure_getenv HAVE_SECURE_GETENV)
-check_function_exists(__secure_getenv HAVE___SECURE_GETENV)
+    check_function_exists(secure_getenv HAVE_SECURE_GETENV)
+    check_function_exists(__secure_getenv HAVE___SECURE_GETENV)
 
-if (HAVE_SECURE_GETENV)
-    target_compile_definitions(loader_common_options INTERFACE HAVE_SECURE_GETENV)
-endif()
-if (HAVE___SECURE_GETENV)
-    target_compile_definitions(loader_common_options INTERFACE HAVE___SECURE_GETENV)
-endif()
-if(NOT MSVC AND NOT (HAVE_SECURE_GETENV OR HAVE___SECURE_GETENV))
-    message(WARNING "Using non-secure environmental lookups. This loader will not properly disable environent variables when run with elevated permissions.")
+    if (HAVE_SECURE_GETENV)
+        target_compile_definitions(loader_common_options INTERFACE HAVE_SECURE_GETENV)
+    endif()
+    if (HAVE___SECURE_GETENV)
+        target_compile_definitions(loader_common_options INTERFACE HAVE___SECURE_GETENV)
+    endif()
+    if (NOT (HAVE_SECURE_GETENV OR HAVE___SECURE_GETENV))
+        message(WARNING "Using non-secure environmental lookups. This loader will not properly disable environent variables when run with elevated permissions.")
+    endif()
 endif()
 
 option(LOADER_CODEGEN "Enable vulkan loader code generation")
@@ -345,12 +333,6 @@ if(BUILD_TESTS)
                 target_compile_definitions(detours PUBLIC _USING_V110_SDK71_ DETOURS_WIN_7)
             endif(ver EQUAL 0x0700)
             target_compile_definitions(detours PUBLIC "_WIN32_WINNT=${ver}")
-
-            if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-                target_compile_definitions(detours PUBLIC "DETOURS_TARGET_PROCESSOR=X64" DETOURS_X64 DETOURS_64BIT _AMD64_)
-            else("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-                target_compile_definitions(detours PUBLIC "DETOURS_TARGET_PROCESSOR=X86" DETOURS_X86 _X86_)
-            endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
             target_compile_definitions(detours PUBLIC  "DETOURS_VERSION=0x4c0c1" WIN32_LEAN_AND_MEAN)
 
