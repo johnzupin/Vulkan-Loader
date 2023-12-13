@@ -213,6 +213,8 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
 
         preamble = ''
 
+        preamble += '// clang-format off\n'
+
         if self.genOpts.filename == 'vk_loader_extensions.h':
             preamble += '#pragma once\n'
 
@@ -267,6 +269,8 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
         elif self.genOpts.filename == 'vk_layer_dispatch_table.h':
             file_data += self.OutputLayerInstanceDispatchTable()
             file_data += self.OutputLayerDeviceDispatchTable()
+
+        file_data += '// clang-format on'
 
         write(file_data, file=self.outFile);
 
@@ -463,8 +467,7 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
         protos += '// Array of extension strings for instance extensions we support.\n'
         protos += 'extern const char *const LOADER_INSTANCE_EXTENSIONS[];\n'
         protos += '\n'
-        protos += 'VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_icd_term *icd_term, VkInstance inst,\n'
-        protos += '                                                   const PFN_vkGetInstanceProcAddr fp_gipa);\n'
+        protos += 'VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_instance* inst, struct loader_icd_term *icd_term);\n'
         protos += '\n'
         protos += '// Init Device function pointer dispatch table with core commands\n'
         protos += 'VKAPI_ATTR void VKAPI_CALL loader_init_device_dispatch_table(struct loader_dev_dispatch_table *dev_table, PFN_vkGetDeviceProcAddr gpa,\n'
@@ -655,19 +658,22 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
         cur_extension_name = ''
 
         table = ''
-        table += 'VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_icd_term *icd_term, VkInstance inst,\n'
-        table += '                                                   const PFN_vkGetInstanceProcAddr fp_gipa) {\n'
+        table += 'VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_instance* inst, struct loader_icd_term *icd_term) {\n'
+        table += '    const PFN_vkGetInstanceProcAddr fp_gipa = icd_term->scanned_icd->GetInstanceProcAddr;\n'
         table += '\n'
-        table += '#define LOOKUP_GIPA(func, required)                                                        \\\n'
-        table += '    do {                                                                                   \\\n'
-        table += '        icd_term->dispatch.func = (PFN_vk##func)fp_gipa(inst, "vk" #func);                 \\\n'
-        table += '        if (!icd_term->dispatch.func && required) {                                        \\\n'
-        table += '            loader_log((struct loader_instance *)inst, VULKAN_LOADER_WARN_BIT, 0, \\\n'
-        table += '                       loader_platform_get_proc_address_error("vk" #func));                \\\n'
-        table += '            return false;                                                                  \\\n'
-        table += '        }                                                                                  \\\n'
+        table += '#define LOOKUP_GIPA(func) icd_term->dispatch.func = (PFN_vk##func)fp_gipa(icd_term->instance, "vk" #func);\n'
+        table += '\n'
+        table += '#define LOOKUP_REQUIRED_GIPA(func)                                                      \\\n'
+        table += '    do {                                                                                \\\n'
+        table += '        LOOKUP_GIPA(func);                                                              \\\n'
+        table += '        if (!icd_term->dispatch.func) {                                                 \\\n'
+        table += '            loader_log(inst, VULKAN_LOADER_WARN_BIT, 0, "Unable to load %s from ICD %s",\\\n'
+        table += '                       "vk"#func, icd_term->scanned_icd->lib_name);                     \\\n'
+        table += '            return false;                                                               \\\n'
+        table += '        }                                                                               \\\n'
         table += '    } while (0)\n'
         table += '\n'
+
 
         skip_gipa_commands = ['vkGetInstanceProcAddr',
                               'vkEnumerateDeviceLayerProperties',
@@ -702,14 +708,17 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
                     if cur_cmd.protect is not None:
                         table += '#if defined(%s)\n' % cur_cmd.protect
 
-                    # The Core Vulkan code will be wrapped in a feature called VK_VERSION_#_#
-                    # For example: VK_VERSION_1_0 wraps the core 1.0 Vulkan functionality
-                    table += '    LOOKUP_GIPA(%s, %s);\n' % (base_name, 'true' if required else 'false')
-
+                    if required:
+                        # The Core Vulkan code will be wrapped in a feature called VK_VERSION_#_#
+                        # For example: VK_VERSION_1_0 wraps the core 1.0 Vulkan functionality
+                        table += f'    LOOKUP_REQUIRED_GIPA({base_name});\n'
+                    else:
+                        table += f'    LOOKUP_GIPA({base_name});\n'
                     if cur_cmd.protect is not None:
                         table += '#endif // %s\n' % cur_cmd.protect
 
         table += '\n'
+        table += '#undef LOOKUP_REQUIRED_GIPA\n'
         table += '#undef LOOKUP_GIPA\n'
         table += '\n'
         table += '    return true;\n'
@@ -780,7 +789,7 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
                 tables += 'VKAPI_ATTR void VKAPI_CALL loader_init_device_dispatch_table(struct loader_dev_dispatch_table *dev_table, PFN_vkGetDeviceProcAddr gpa,\n'
                 tables += '                                                             VkDevice dev) {\n'
                 tables += '    VkLayerDispatchTable *table = &dev_table->core_dispatch;\n'
-                tables += '    assert(table->magic == DEVICE_DISP_TABLE_MAGIC_NUMBER);\n'
+                tables += '    if (table->magic != DEVICE_DISP_TABLE_MAGIC_NUMBER) { abort(); }\n'
                 tables += '    for (uint32_t i = 0; i < MAX_NUM_UNKNOWN_EXTS; i++) dev_table->ext_dispatch[i] = (PFN_vkDevExt)vkDevExtError;\n'
 
             elif x == 1:
@@ -936,9 +945,9 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
                         tables += f'    if (!strcmp(name, "{base_name}")) '
                         if cur_cmd.name in DEVICE_CMDS_MUST_USE_TRAMP:
                             if version_check != '':
-                                tables += f'{{\n{version_check}        return dev->extensions.{cur_cmd.ext_name[3:].lower()}_enabled ? (void *){base_name} : NULL;\n    }}\n'
+                                tables += f'{{\n{version_check}        return dev->layer_extensions.{cur_cmd.ext_name[3:].lower()}_enabled ? (void *){base_name} : NULL;\n    }}\n'
                             else:
-                                tables += f'return dev->extensions.{cur_cmd.ext_name[3:].lower()}_enabled ? (void *){base_name} : NULL;\n'
+                                tables += f'return dev->layer_extensions.{cur_cmd.ext_name[3:].lower()}_enabled ? (void *){base_name} : NULL;\n'
 
                         else:
                             if version_check != '':
@@ -1194,7 +1203,7 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
                     # If this is an instance function taking a physical device (i.e. pre Vulkan 1.1), we need to behave and not crash so return an
                     # error here.
                     if ext_cmd.ext_type =='instance' and has_return_type:
-                        funcs += '        return VK_ERROR_INITIALIZATION_FAILED;\n'
+                        funcs += '        return VK_ERROR_EXTENSION_NOT_PRESENT;\n'
                     else:
                         funcs += '        abort(); /* Intentionally fail so user can correct issue. */\n'
                     funcs += '    }\n'
@@ -1501,9 +1510,9 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
                 term_func += f'    if (!strcmp(name, "{ext_cmd.name[2:]}")) {{\n'
                 term_func += f'        *found_name = true;\n'
                 if ext_cmd.require:
-                    term_func += f'        return dev->extensions.{ext_cmd.ext_name[3:].lower()}_enabled && dev->extensions.{ext_cmd.require[3:].lower()}_enabled ?\n'
+                    term_func += f'        return dev->driver_extensions.{ext_cmd.ext_name[3:].lower()}_enabled && dev->driver_extensions.{ext_cmd.require[3:].lower()}_enabled ?\n'
                 else:
-                    term_func += f'        return dev->extensions.{ext_cmd.ext_name[3:].lower()}_enabled ?\n'
+                    term_func += f'        return dev->driver_extensions.{ext_cmd.ext_name[3:].lower()}_enabled ?\n'
                 term_func += f'            (PFN_vkVoidFunction)terminator_{(ext_cmd.name[2:])} : NULL;\n'
                 term_func += f'    }}\n'
 
@@ -1542,7 +1551,7 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
         if last_protect is not None:
             term_func += '#endif // %s\n' % last_protect
 
-        term_func += '}; \n\n'
+        term_func += '};\n\n'
 
         return term_func
 
@@ -1598,10 +1607,10 @@ class LoaderExtensionOutputGenerator(OutputGenerator):
 
 
                 if ext_cmd.require:
-                    term_func += f'    if (dev->extensions.{ext_cmd.ext_name[3:].lower()}_enabled && dev->extensions.{ext_cmd.require[3:].lower()}_enabled)\n'
+                    term_func += f'    if (dev->driver_extensions.{ext_cmd.ext_name[3:].lower()}_enabled && dev->driver_extensions.{ext_cmd.require[3:].lower()}_enabled)\n'
                     term_func += f'       dispatch->{ext_cmd.name[2:]} = (PFN_{(ext_cmd.name)})gpda(dev->icd_device, "{(ext_cmd.name)}");\n'
                 else:
-                    term_func += f'    if (dev->extensions.{ext_cmd.ext_name[3:].lower()}_enabled)\n'
+                    term_func += f'    if (dev->driver_extensions.{ext_cmd.ext_name[3:].lower()}_enabled)\n'
                     term_func += f'       dispatch->{ext_cmd.name[2:]} = (PFN_{(ext_cmd.name)})gpda(dev->icd_device, "{(ext_cmd.name)}");\n'
 
         if last_protect is not None:

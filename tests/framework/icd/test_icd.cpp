@@ -606,16 +606,20 @@ VKAPI_ATTR VkBool32 VKAPI_CALL test_vkGetPhysicalDeviceDirectFBPresentationSuppo
 #endif  // VK_USE_PLATFORM_DIRECTFB_EXT
 
 #if defined(VK_USE_PLATFORM_MACOS_MVK)
-VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateMacOSSurfaceMVK(VkInstance instance, const VkMacOSSurfaceCreateInfoMVK* pCreateInfo,
-                                                            const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateMacOSSurfaceMVK([[maybe_unused]] VkInstance instance,
+                                                            [[maybe_unused]] const VkMacOSSurfaceCreateInfoMVK* pCreateInfo,
+                                                            [[maybe_unused]] const VkAllocationCallbacks* pAllocator,
+                                                            VkSurfaceKHR* pSurface) {
     common_nondispatch_handle_creation(icd.surface_handles, pSurface);
     return VK_SUCCESS;
 }
 #endif  // VK_USE_PLATFORM_MACOS_MVK
 
 #if defined(VK_USE_PLATFORM_IOS_MVK)
-VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateIOSSurfaceMVK(VkInstance instance, const VkIOSSurfaceCreateInfoMVK* pCreateInfo,
-                                                          const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateIOSSurfaceMVK([[maybe_unused]] VkInstance instance,
+                                                          [[maybe_unused]] const VkIOSSurfaceCreateInfoMVK* pCreateInfo,
+                                                          [[maybe_unused]] const VkAllocationCallbacks* pAllocator,
+                                                          VkSurfaceKHR* pSurface) {
     common_nondispatch_handle_creation(icd.surface_handles, pSurface);
     return VK_SUCCESS;
 }
@@ -632,8 +636,10 @@ VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateStreamDescriptorSurfaceGGP(VkInstanc
 #endif  // VK_USE_PLATFORM_GGP
 
 #if defined(VK_USE_PLATFORM_METAL_EXT)
-VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateMetalSurfaceEXT(VkInstance instance, const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
-                                                            const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface) {
+VKAPI_ATTR VkResult VKAPI_CALL test_vkCreateMetalSurfaceEXT([[maybe_unused]] VkInstance instance,
+                                                            [[maybe_unused]] const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+                                                            [[maybe_unused]] const VkAllocationCallbacks* pAllocator,
+                                                            VkSurfaceKHR* pSurface) {
     common_nondispatch_handle_creation(icd.surface_handles, pSurface);
     return VK_SUCCESS;
 }
@@ -982,9 +988,12 @@ VKAPI_ATTR void VKAPI_CALL test_vkGetPhysicalDeviceProperties2(VkPhysicalDevice 
         VkBaseInStructure* pNext = reinterpret_cast<VkBaseInStructure*>(pProperties->pNext);
         while (pNext) {
             if (pNext->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT) {
-                VkPhysicalDevicePCIBusInfoPropertiesEXT* bus_info =
-                    reinterpret_cast<VkPhysicalDevicePCIBusInfoPropertiesEXT*>(pNext);
+                auto* bus_info = reinterpret_cast<VkPhysicalDevicePCIBusInfoPropertiesEXT*>(pNext);
                 bus_info->pciBus = phys_dev.pci_bus;
+            }
+            if (pNext->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT) {
+                auto* layered_driver_props = reinterpret_cast<VkPhysicalDeviceLayeredDriverPropertiesMSFT*>(pNext);
+                layered_driver_props->underlyingAPI = phys_dev.layered_driver_underlying_api;
             }
             pNext = reinterpret_cast<VkBaseInStructure*>(const_cast<VkBaseInStructure*>(pNext->pNext));
         }
@@ -1104,7 +1113,7 @@ VKAPI_ATTR VkResult VKAPI_CALL test_vk_icdEnumerateAdapterPhysicalDevices(VkInst
                                                                           VkPhysicalDevice* pPhysicalDevices) {
     if (adapterLUID.LowPart != icd.adapterLUID.LowPart || adapterLUID.HighPart != icd.adapterLUID.HighPart) {
         *pPhysicalDeviceCount = 0;
-        return VK_SUCCESS;
+        return VK_ERROR_INCOMPATIBLE_DRIVER;
     }
     icd.called_enumerate_adapter_physical_devices = true;
     VkResult res = test_vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices);
@@ -1324,14 +1333,19 @@ PFN_vkVoidFunction get_physical_device_func([[maybe_unused]] VkInstance instance
         return to_vkVoidFunction(test_vkGetPhysicalDeviceQueueFamilyProperties);
     if (string_eq(pName, "vkCreateDevice")) return to_vkVoidFunction(test_vkCreateDevice);
 
-    if (string_eq(pName, "vkGetPhysicalDeviceFeatures")) return to_vkVoidFunction(test_vkGetPhysicalDeviceFeatures);
-    if (string_eq(pName, "vkGetPhysicalDeviceProperties")) return to_vkVoidFunction(test_vkGetPhysicalDeviceProperties);
-    if (string_eq(pName, "vkGetPhysicalDeviceMemoryProperties")) return to_vkVoidFunction(test_vkGetPhysicalDeviceMemoryProperties);
+    if (string_eq(pName, "vkGetPhysicalDeviceFeatures"))
+        return icd.can_query_GetPhysicalDeviceFuncs ? to_vkVoidFunction(test_vkGetPhysicalDeviceFeatures) : nullptr;
+    if (string_eq(pName, "vkGetPhysicalDeviceProperties"))
+        return icd.can_query_GetPhysicalDeviceFuncs ? to_vkVoidFunction(test_vkGetPhysicalDeviceProperties) : nullptr;
+    if (string_eq(pName, "vkGetPhysicalDeviceMemoryProperties"))
+        return icd.can_query_GetPhysicalDeviceFuncs ? to_vkVoidFunction(test_vkGetPhysicalDeviceMemoryProperties) : nullptr;
     if (string_eq(pName, "vkGetPhysicalDeviceSparseImageFormatProperties"))
-        return to_vkVoidFunction(test_vkGetPhysicalDeviceSparseImageFormatProperties);
-    if (string_eq(pName, "vkGetPhysicalDeviceFormatProperties")) return to_vkVoidFunction(test_vkGetPhysicalDeviceFormatProperties);
+        return icd.can_query_GetPhysicalDeviceFuncs ? to_vkVoidFunction(test_vkGetPhysicalDeviceSparseImageFormatProperties)
+                                                    : nullptr;
+    if (string_eq(pName, "vkGetPhysicalDeviceFormatProperties"))
+        return icd.can_query_GetPhysicalDeviceFuncs ? to_vkVoidFunction(test_vkGetPhysicalDeviceFormatProperties) : nullptr;
     if (string_eq(pName, "vkGetPhysicalDeviceImageFormatProperties"))
-        return to_vkVoidFunction(test_vkGetPhysicalDeviceImageFormatProperties);
+        return icd.can_query_GetPhysicalDeviceFuncs ? to_vkVoidFunction(test_vkGetPhysicalDeviceImageFormatProperties) : nullptr;
 
     if (IsInstanceExtensionEnabled(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
         if (string_eq(pName, "vkGetPhysicalDeviceFeatures2KHR")) return to_vkVoidFunction(test_vkGetPhysicalDeviceFeatures2);

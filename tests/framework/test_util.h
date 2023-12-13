@@ -62,7 +62,7 @@
 #include <stdint.h>
 
 // Set of platforms with a common set of functionality which is queried throughout the program
-#if defined(__linux__) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__QNXNTO__) || defined(__FreeBSD__) || \
+#if defined(__linux__) || defined(__APPLE__) || defined(__Fuchsia__) || defined(__QNX__) || defined(__FreeBSD__) || \
     defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__GNU__)
 #define COMMON_UNIX_PLATFORMS 1
 #else
@@ -803,7 +803,7 @@ inline std::string test_platform_executable_path() {
     std::string buffer;
     buffer.resize(1024);
     pid_t pid = getpid();
-    int ret = proc_pidpath(pid, &buffer[0], buffer.size());
+    int ret = proc_pidpath(pid, &buffer[0], static_cast<uint32_t>(buffer.size()));
     if (ret <= 0) return NULL;
     buffer[ret] = '\0';
     buffer.resize(ret);
@@ -836,7 +836,7 @@ inline std::string test_platform_executable_path() {
 }
 #elif defined(__Fuchsia__) || defined(__OpenBSD__)
 inline std::string test_platform_executable_path() { return {}; }
-#elif defined(__QNXNTO__)
+#elif defined(__QNX__)
 
 #define SYSCONFDIR "/etc"
 
@@ -863,7 +863,7 @@ inline std::string test_platform_executable_path() {
 
     return buffer;
 }
-#endif  // defined (__QNXNTO__)
+#endif  // defined (__QNX__)
 #if defined(WIN32)
 inline std::string test_platform_executable_path() {
     std::string buffer;

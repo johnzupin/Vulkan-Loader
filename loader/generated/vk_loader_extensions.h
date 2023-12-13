@@ -22,6 +22,7 @@
  * Author: Mark Young <marky@lunarg.com>
  */
 
+// clang-format off
 #pragma once
 
 // Structures defined externally, but used here
@@ -54,8 +55,7 @@ extern const VkLayerInstanceDispatchTable instance_disp;
 // Array of extension strings for instance extensions we support.
 extern const char *const LOADER_INSTANCE_EXTENSIONS[];
 
-VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_icd_term *icd_term, VkInstance inst,
-                                                   const PFN_vkGetInstanceProcAddr fp_gipa);
+VKAPI_ATTR bool VKAPI_CALL loader_icd_init_entries(struct loader_instance* inst, struct loader_icd_term *icd_term);
 
 // Init Device function pointer dispatch table with core commands
 VKAPI_ATTR void VKAPI_CALL loader_init_device_dispatch_table(struct loader_dev_dispatch_table *dev_table, PFN_vkGetDeviceProcAddr gpa,
@@ -348,6 +348,9 @@ struct loader_icd_term_dispatch {
     // ---- VK_KHR_cooperative_matrix extension commands
     PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR GetPhysicalDeviceCooperativeMatrixPropertiesKHR;
 
+    // ---- VK_KHR_calibrated_timestamps extension commands
+    PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsKHR GetPhysicalDeviceCalibrateableTimeDomainsKHR;
+
     // ---- VK_EXT_debug_report extension commands
     PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallbackEXT;
     PFN_vkDestroyDebugReportCallbackEXT DestroyDebugReportCallbackEXT;
@@ -499,6 +502,6 @@ struct loader_device_terminator_dispatch {
     // ---- VK_EXT_full_screen_exclusive extension commands
     PFN_vkGetDeviceGroupSurfacePresentModes2EXT GetDeviceGroupSurfacePresentModes2EXT;
 #endif // VK_USE_PLATFORM_WIN32_KHR
-}; 
+};
 
-
+// clang-format on

@@ -125,6 +125,21 @@ TEST(CreateInstance, RelativePaths) {
     ASSERT_TRUE(string_eq(layers.at(0).layerName, layer_name));
 }
 
+TEST(CreateInstance, ApiVersionBelow1_0) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).set_min_icd_interface_version(5);
+
+    DebugUtilsLogger debug_log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, debug_log);
+    inst.create_info.api_version = 1;
+    inst.CheckCreate();
+    ASSERT_TRUE(
+        debug_log.find("VkInstanceCreateInfo::pApplicationInfo::apiVersion has value of 1 which is not permitted. If apiVersion is "
+                       "not 0, then it must be "
+                       "greater than or equal to the value of VK_API_VERSION_1_0 [VUID-VkApplicationInfo-apiVersion]"));
+}
+
 TEST(CreateInstance, ConsecutiveCreate) {
     FrameworkEnvironment env{};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
@@ -4068,4 +4083,431 @@ TEST(Layer, pfnNextGetInstanceProcAddr_should_not_return_layers_own_functions) {
 
     DeviceWrapper dev{inst};
     dev.CheckCreate(phys_devs.at(0));
+}
+
+TEST(Layer, LLP_LAYER_21) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_physical_device({});
+
+    env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
+                                                         .set_name("implicit_layer_name")
+                                                         .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
+                                                         .set_disable_environment("DISABLE_ME")),
+                           "implicit_test_layer.json");
+    env.get_test_layer(0).set_clobber_pInstance(true);
+
+    InstWrapper inst{env.vulkan_functions};
+    FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
+#if defined(WIN32)
+#if defined(_WIN64)
+    ASSERT_DEATH(
+        inst.CheckCreate(),
+        testing::ContainsRegex(
+            R"(terminator_CreateInstance: Instance pointer \(................\) has invalid MAGIC value 0x00000000. Instance value )"
+            R"(possibly corrupted by active layer \(Policy #LLP_LAYER_21\))"));
+#else
+    ASSERT_DEATH(
+        inst.CheckCreate(),
+        testing::ContainsRegex(
+            R"(terminator_CreateInstance: Instance pointer \(........\) has invalid MAGIC value 0x00000000. Instance value )"
+            R"(possibly corrupted by active layer \(Policy #LLP_LAYER_21\))"));
+#endif
+#else
+    ASSERT_DEATH(
+        inst.CheckCreate(),
+        testing::ContainsRegex(
+            R"(terminator_CreateInstance: Instance pointer \(0x[0-9A-Fa-f]+\) has invalid MAGIC value 0x00000000. Instance value )"
+            R"(possibly corrupted by active layer \(Policy #LLP_LAYER_21\))"));
+#endif
+}
+
+TEST(Layer, LLP_LAYER_22) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_physical_device({});
+
+    env.add_implicit_layer(ManifestLayer{}.add_layer(ManifestLayer::LayerDescription{}
+                                                         .set_name("implicit_layer_name")
+                                                         .set_lib_path(TEST_LAYER_PATH_EXPORT_VERSION_2)
+                                                         .set_disable_environment("DISABLE_ME")),
+                           "implicit_test_layer.json");
+    env.get_test_layer(0).set_clobber_pDevice(true);
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.add_extension("VK_EXT_debug_utils");
+    inst.CheckCreate();
+
+    DebugUtilsWrapper log{inst};
+    CreateDebugUtilsMessenger(log);
+
+    DeviceWrapper dev{inst};
+#if defined(WIN32)
+#if defined(_WIN64)
+    ASSERT_DEATH(
+        dev.CheckCreate(inst.GetPhysDev()),
+        testing::ContainsRegex(
+            R"(terminator_CreateDevice: Device pointer \(................\) has invalid MAGIC value 0x00000000. The expected value is 0x10ADED040410ADED. Device value )"
+            R"(possibly corrupted by active layer \(Policy #LLP_LAYER_22\))"));
+#else
+    ASSERT_DEATH(
+        dev.CheckCreate(inst.GetPhysDev()),
+        testing::ContainsRegex(
+            R"(terminator_CreateDevice: Device pointer \(........\) has invalid MAGIC value 0x00000000. The expected value is 0x10ADED040410ADED. Device value )"
+            R"(possibly corrupted by active layer \(Policy #LLP_LAYER_22\))"));
+#endif
+#else
+    ASSERT_DEATH(
+        dev.CheckCreate(inst.GetPhysDev()),
+        testing::ContainsRegex(
+            R"(terminator_CreateDevice: Device pointer \(0x[0-9A-Fa-f]+\) has invalid MAGIC value 0x00000000. The expected value is 0x10ADED040410ADED. Device value )"
+            R"(possibly corrupted by active layer \(Policy #LLP_LAYER_22\))"));
+#endif
+}
+
+TEST(InvalidManifest, ICD) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_physical_device({});
+
+    std::vector<std::string> invalid_jsons;
+    invalid_jsons.push_back(",");
+    invalid_jsons.push_back("{},[]");
+    invalid_jsons.push_back("{ \"foo\":\"bar\", }");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": [], },");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": [{},] },");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": {\"fee\"} },");
+    invalid_jsons.push_back("{\"\":\"bar\", \"baz\": {}");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": {\"fee\":1234, true, \"ab\":\"bc\"} },");
+
+    for (size_t i = 0; i < invalid_jsons.size(); i++) {
+        auto file_name = std::string("invalid_driver_") + std::to_string(i) + ".json";
+        fs::path new_path = env.get_folder(ManifestLocation::driver).write_manifest(file_name, invalid_jsons[i]);
+        env.platform_shim->add_manifest(ManifestCategory::icd, new_path);
+    }
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.CheckCreate();
+}
+
+TEST(InvalidManifest, Layer) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_physical_device({});
+
+    std::vector<std::string> invalid_jsons;
+    invalid_jsons.push_back(",");
+    invalid_jsons.push_back("{},[]");
+    invalid_jsons.push_back("{ \"foo\":\"bar\", }");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": [], },");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": [{},] },");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": {\"fee\"} },");
+    invalid_jsons.push_back("{\"\":\"bar\", \"baz\": {}");
+    invalid_jsons.push_back("{\"foo\":\"bar\", \"baz\": {\"fee\":1234, true, \"ab\":\"bc\"} },");
+
+    for (size_t i = 0; i < invalid_jsons.size(); i++) {
+        auto file_name = std::string("invalid_implicit_layer_") + std::to_string(i) + ".json";
+        fs::path new_path = env.get_folder(ManifestLocation::implicit_layer).write_manifest(file_name, invalid_jsons[i]);
+        env.platform_shim->add_manifest(ManifestCategory::implicit_layer, new_path);
+    }
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.CheckCreate();
+}
+#if defined(WIN32)
+void add_dxgi_adapter(FrameworkEnvironment& env, const char* name, LUID luid, uint32_t vendor_id) {
+    auto& driver = env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_6).set_discovery_type(ManifestDiscoveryType::null_dir));
+    driver.set_min_icd_interface_version(5);
+    driver.set_max_icd_interface_version(6);
+    driver.setup_WSI();
+    driver.set_icd_api_version(VK_API_VERSION_1_1);
+    driver.physical_devices.emplace_back(name);
+    auto& pd0 = driver.physical_devices.back();
+    pd0.properties.apiVersion = VK_API_VERSION_1_1;
+
+    DXGI_ADAPTER_DESC1 desc{};
+    desc.VendorId = known_driver_list.at(vendor_id).vendor_id;
+    desc.AdapterLuid = luid;
+    auto wide_name = conver_str_to_wstr(name);
+    wcsncpy_s(desc.Description, 128, wide_name.c_str(), wide_name.size());
+    driver.set_adapterLUID(desc.AdapterLuid);
+    env.platform_shim->add_dxgi_adapter(GpuType::discrete, desc);
+
+    env.platform_shim->add_d3dkmt_adapter(
+        D3DKMT_Adapter{static_cast<UINT>(env.icds.size()) - 1U, desc.AdapterLuid}.add_driver_manifest_path(
+            env.get_icd_manifest_path(env.icds.size() - 1)));
+}
+
+TEST(EnumerateAdapterPhysicalDevices, SameAdapterLUID_reordered) {
+    FrameworkEnvironment env;
+
+    uint32_t physical_count = 3;
+
+    // Physical devices are enumerate in reverse order to the drivers insertion into the test framework
+    add_dxgi_adapter(env, "physical_device_2", LUID{10, 100}, 2);
+    add_dxgi_adapter(env, "physical_device_1", LUID{20, 200}, 1);
+    add_dxgi_adapter(env, "physical_device_0", LUID{10, 100}, 2);
+
+    {
+        uint32_t returned_physical_count = 0;
+        InstWrapper inst{env.vulkan_functions};
+        inst.create_info.setup_WSI().set_api_version(VK_API_VERSION_1_1);
+        inst.CheckCreate();
+
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        ASSERT_EQ(physical_count, returned_physical_count);
+        std::vector<VkPhysicalDevice> physical_device_handles{returned_physical_count};
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count,
+                                                                              physical_device_handles.data()));
+        ASSERT_EQ(physical_count, returned_physical_count);
+
+        VkPhysicalDeviceProperties phys_dev_props[3]{};
+        env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[0], &(phys_dev_props[0]));
+        env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[1], &(phys_dev_props[1]));
+        env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[2], &(phys_dev_props[2]));
+
+        EXPECT_TRUE(string_eq(phys_dev_props[0].deviceName, "physical_device_0"));
+        EXPECT_TRUE(string_eq(phys_dev_props[1].deviceName, "physical_device_2"));
+        // Because LUID{10,100} is encountered first, all physical devices which correspond to that LUID are enumerated before any
+        // other physical devices.
+        EXPECT_TRUE(string_eq(phys_dev_props[2].deviceName, "physical_device_1"));
+
+        // Check that both devices do not report VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT
+        VkPhysicalDeviceLayeredDriverPropertiesMSFT layered_driver_properties_msft{};
+        layered_driver_properties_msft.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT;
+        VkPhysicalDeviceProperties2 props2{};
+        props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        props2.pNext = (void*)&layered_driver_properties_msft;
+
+        env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[0], &props2);
+        EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+
+        env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[1], &props2);
+        EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+
+        env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[2], &props2);
+        EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+    }
+    // Set the first physical device that is enumerated to be a 'layered' driver so it should be swapped with the first physical
+    // device
+    env.get_test_icd(2).physical_devices.back().layered_driver_underlying_api = VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT;
+    {
+        uint32_t returned_physical_count = 0;
+        InstWrapper inst{env.vulkan_functions};
+        inst.create_info.setup_WSI().set_api_version(VK_API_VERSION_1_1);
+        inst.CheckCreate();
+
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        ASSERT_EQ(physical_count, returned_physical_count);
+        std::vector<VkPhysicalDevice> physical_device_handles{returned_physical_count};
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count,
+                                                                              physical_device_handles.data()));
+        ASSERT_EQ(physical_count, returned_physical_count);
+
+        VkPhysicalDeviceProperties phys_dev_props[3]{};
+        env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[0], &(phys_dev_props[0]));
+        env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[1], &(phys_dev_props[1]));
+        env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[2], &(phys_dev_props[2]));
+
+        // Because the 'last' driver has the layered_driver set to D3D12, the order is modified
+        EXPECT_TRUE(string_eq(phys_dev_props[0].deviceName, "physical_device_2"));
+        EXPECT_TRUE(string_eq(phys_dev_props[1].deviceName, "physical_device_0"));
+        // Because LUID{10,100} is encountered first, all physical devices which correspond to that LUID are enumerated before any
+        // other physical devices.
+        EXPECT_TRUE(string_eq(phys_dev_props[2].deviceName, "physical_device_1"));
+
+        // Check that the correct physical device reports VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT
+        VkPhysicalDeviceLayeredDriverPropertiesMSFT layered_driver_properties_msft{};
+        layered_driver_properties_msft.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT;
+        VkPhysicalDeviceProperties2 props2{};
+        props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        props2.pNext = (void*)&layered_driver_properties_msft;
+
+        env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[0], &props2);
+        EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+
+        env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[1], &props2);
+        EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT);
+
+        env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[2], &props2);
+        EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+    }
+}
+
+TEST(EnumerateAdapterPhysicalDevices, SameAdapterLUID_same_order) {
+    FrameworkEnvironment env;
+
+    uint32_t physical_count = 3;
+
+    // Physical devices are enumerate in reverse order to the drivers insertion into the test framework
+    add_dxgi_adapter(env, "physical_device_2", LUID{10, 100}, 2);
+    add_dxgi_adapter(env, "physical_device_1", LUID{20, 200}, 1);
+    add_dxgi_adapter(env, "physical_device_0", LUID{10, 100}, 2);
+
+    // Set the last physical device that is enumerated last to be a 'layered'  physical device - no swapping should occur
+    env.get_test_icd(0).physical_devices.back().layered_driver_underlying_api = VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT;
+
+    uint32_t returned_physical_count = 0;
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().set_api_version(VK_API_VERSION_1_1);
+    inst.CheckCreate();
+
+    ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+    ASSERT_EQ(physical_count, returned_physical_count);
+    std::vector<VkPhysicalDevice> physical_device_handles{returned_physical_count};
+    ASSERT_EQ(VK_SUCCESS,
+              env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, physical_device_handles.data()));
+    ASSERT_EQ(physical_count, returned_physical_count);
+
+    VkPhysicalDeviceProperties phys_dev_props[3]{};
+    env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[0], &(phys_dev_props[0]));
+    env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[1], &(phys_dev_props[1]));
+    env.vulkan_functions.vkGetPhysicalDeviceProperties(physical_device_handles[2], &(phys_dev_props[2]));
+
+    // Make sure that reordering doesn't occur if the MSFT layered driver appears second
+    EXPECT_TRUE(string_eq(phys_dev_props[0].deviceName, "physical_device_0"));
+    EXPECT_TRUE(string_eq(phys_dev_props[1].deviceName, "physical_device_2"));
+    // Because LUID{10,100} is encountered first, all physical devices which correspond to that LUID are enumerated before any
+    // other physical devices.
+    EXPECT_TRUE(string_eq(phys_dev_props[2].deviceName, "physical_device_1"));
+
+    // Check that the correct physical device reports VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT
+    VkPhysicalDeviceLayeredDriverPropertiesMSFT layered_driver_properties_msft{};
+    layered_driver_properties_msft.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LAYERED_DRIVER_PROPERTIES_MSFT;
+    VkPhysicalDeviceProperties2 props2{};
+    props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    props2.pNext = (void*)&layered_driver_properties_msft;
+
+    env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[0], &props2);
+    EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+
+    env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[1], &props2);
+    EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_D3D12_MSFT);
+
+    env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[2], &props2);
+    EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
+}
+#endif  // defined(WIN32)
+
+void try_create_swapchain(DeviceWrapper& dev, VkSurfaceKHR& surface) {
+    PFN_vkCreateSwapchainKHR CreateSwapchainKHR = dev.load("vkCreateSwapchainKHR");
+    PFN_vkGetSwapchainImagesKHR GetSwapchainImagesKHR = dev.load("vkGetSwapchainImagesKHR");
+    PFN_vkDestroySwapchainKHR DestroySwapchainKHR = dev.load("vkDestroySwapchainKHR");
+    ASSERT_TRUE(nullptr != CreateSwapchainKHR);
+    ASSERT_TRUE(nullptr != GetSwapchainImagesKHR);
+    ASSERT_TRUE(nullptr != DestroySwapchainKHR);
+
+    VkSwapchainKHR swapchain{};
+    VkSwapchainCreateInfoKHR swap_create_info{};
+    swap_create_info.surface = surface;
+
+    ASSERT_EQ(VK_SUCCESS, CreateSwapchainKHR(dev, &swap_create_info, nullptr, &swapchain));
+    uint32_t count = 0;
+    ASSERT_EQ(VK_SUCCESS, GetSwapchainImagesKHR(dev, swapchain, &count, nullptr));
+    ASSERT_GT(count, 0U);
+    std::array<VkImage, 16> images;
+    ASSERT_EQ(VK_SUCCESS, GetSwapchainImagesKHR(dev, swapchain, &count, images.data()));
+    DestroySwapchainKHR(dev, swapchain, nullptr);
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, InterspersedThroughout) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}.add_extension("VK_KHR_swapchain").finish());
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}.add_extension("VK_KHR_swapchain").finish());
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI();
+    inst.CheckCreate();
+
+    auto phys_devs = inst.GetPhysDevs();
+    VkSurfaceKHR surface{};
+    create_surface(inst, surface);
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+
+        try_create_swapchain(dev, surface);
+    }
+    env.vulkan_functions.vkDestroySurfaceKHR(inst.inst, surface, nullptr);
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, InMiddleOfList) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}.add_extension("VK_KHR_swapchain").finish());
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}.add_extension("VK_KHR_swapchain").finish());
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI();
+    inst.CheckCreate();
+
+    auto phys_devs = inst.GetPhysDevs();
+    VkSurfaceKHR surface{};
+    create_surface(inst, surface);
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+
+        try_create_swapchain(dev, surface);
+    }
+    env.vulkan_functions.vkDestroySurfaceKHR(inst.inst, surface, nullptr);
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, AtFrontAndBack) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}.add_extension("VK_KHR_swapchain").finish());
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}.add_extension("VK_KHR_swapchain").finish());
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI();
+    inst.CheckCreate();
+
+    auto phys_devs = inst.GetPhysDevs();
+    VkSurfaceKHR surface{};
+    create_surface(inst, surface);
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+
+        try_create_swapchain(dev, surface);
+    }
+    env.vulkan_functions.vkDestroySurfaceKHR(inst.inst, surface, nullptr);
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, NoPhysicaldevices) {
+    FrameworkEnvironment env{};
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).setup_WSI();
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI();
+    inst.CheckCreate();
+    // No physical devices == VK_ERROR_INITIALIZATION_FAILED
+    inst.GetPhysDevs(VK_ERROR_INITIALIZATION_FAILED);
+
+    VkSurfaceKHR surface{};
+    create_surface(inst, surface);
+
+    env.vulkan_functions.vkDestroySurfaceKHR(inst.inst, surface, nullptr);
 }
