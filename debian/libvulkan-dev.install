@@ -1,2 +1,3 @@
 usr/lib/*/pkgconfig/vulkan.pc
 usr/lib/*/libvulkan.so
+usr/lib/*/cmake
