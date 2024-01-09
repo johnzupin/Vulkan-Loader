@@ -1,3 +1,51 @@
+vulkan-loader (1.3.275.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ dependabot[bot] ]
+  * build(deps): bump actions/setup-python from 4 to 5
+  * build(deps): bump github/codeql-action from 2.22.8 to 2.22.9
+
+  [ Juan Ramos ]
+  * Fix version installation of vulkan-loader
+
+  [ Charles Giessen ]
+  * Revert "Fix spelling mistakes in comments"
+  * Revert "Use memset to clear structs"
+  * Revert "Unload drivers which report 0 physical devices"
+  * Revert "Add simple timer of ICD preloading in live tests"
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 2.22.9 to 3.22.11
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.274
+
+  [ Charles Giessen ]
+  * Use memset to clear structs
+  * Fix spelling mistakes in comments
+  * Fix wrong pointer casts in win32 surface code
+  * Make sure VkSurfaceKHR is cast to uintptr properly
+
+  [ Juan Ramos ]
+  * Improve clang on Windows testing
+  * Add VulkanLoaderConfigVersion.cmake
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.22.11 to 3.22.12
+  * Cleanup GitHub action script
+  * Add integration testing
+  * Only require C compiler
+  * BUILD_WERROR OFF by default
+  * Document BUILD_WERROR
+  * Set CMake properties consistently
+
+  [ Daniel Rakos ]
+  * build: API parameterization changes
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.275
+
+ -- john <john@odin>  Tue, 09 Jan 2024 11:58:59 -0700
+
 vulkan-loader (1.3.273.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ Charles Giessen ]
