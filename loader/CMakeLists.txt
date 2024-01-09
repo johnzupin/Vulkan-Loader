@@ -3,6 +3,7 @@
 # Copyright (c) 2014-2023 Valve Corporation
 # Copyright (c) 2014-2023 LunarG, Inc.
 # Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2023-2023 RasterGrid Kft.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,8 +28,7 @@ if(WIN32)
     if(ENABLE_WIN10_ONECORE)
         # Note: When linking your app or driver to OneCore.lib, be sure to remove any links to non-umbrella libs (such as
         # kernel32.lib).
-        set(CMAKE_CXX_STANDARD_LIBRARIES " ") # space is intentional
-        set(CMAKE_C_STANDARD_LIBRARIES ${CMAKE_CXX_STANDARD_LIBRARIES})
+        set(CMAKE_C_STANDARD_LIBRARIES " ") # space is intentional
     endif()
 
     # ~~~
@@ -197,7 +197,7 @@ end
             # Run parse_asm_values.py on asm_offset's assembly file to generate the gen_defines.asm, which the asm code depends on
             add_custom_command(TARGET asm_offset POST_BUILD
                 COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/scripts/parse_asm_values.py "${CMAKE_CURRENT_BINARY_DIR}/gen_defines.asm"
-                    "$<TARGET_FILE_DIR:asm_offset>/asm_offset.asm" "MASM" "${CMAKE_CXX_COMPILER_ID}" "${CMAKE_SYSTEM_PROCESSOR}"
+                    "$<TARGET_FILE_DIR:asm_offset>/asm_offset.asm" "MASM" "${CMAKE_C_COMPILER_ID}" "${CMAKE_SYSTEM_PROCESSOR}"
                 BYPRODUCTS gen_defines.asm
             )
         endif()
@@ -262,25 +262,25 @@ elseif(UNIX) # i.e.: Linux & Apple
         else()
             # Forces compiler to write the intermediate asm file, needed so that we can get sizeof/offset of info out of it.
             target_compile_options(asm_offset PRIVATE -save-temps=obj)
-            if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
                 set(ASM_OFFSET_EXECUTABLE_LOCATION "$<TARGET_FILE_DIR:asm_offset>/gen_defines.asm")
                 set(ASM_OFFSET_INTERMEDIATE_LOCATION "$<TARGET_FILE_DIR:asm_offset>/CMakeFiles/asm_offset.dir/asm_offset.c.s")
-            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
                 set(ASM_OFFSET_EXECUTABLE_LOCATION "$<TARGET_FILE_DIR:asm_offset>/gen_defines.asm")
                 set(ASM_OFFSET_INTERMEDIATE_LOCATION "$<TARGET_FILE_DIR:asm_offset>/CMakeFiles/asm_offset.dir/asm_offset.s")
-            elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+            elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
             # Need to use the current binary dir since the asm_offset.s file is in that folder rather than the bundle
                 set(ASM_OFFSET_EXECUTABLE_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/gen_defines.asm")
                 set(ASM_OFFSET_INTERMEDIATE_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/asm_offset.dir/asm_offset.s")
             else()
-                message(FATAL_ERROR "CXX_COMPILER_ID not supported!")
+                message(FATAL_ERROR "C_COMPILER_ID not supported!")
             endif()
 
             find_package(Python3 REQUIRED QUIET)
             # Run parse_asm_values.py on asm_offset's assembly file to generate the gen_defines.asm, which the asm code depends on
             add_custom_command(TARGET asm_offset POST_BUILD
                 COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/scripts/parse_asm_values.py "${ASM_OFFSET_EXECUTABLE_LOCATION}"
-                    "${ASM_OFFSET_INTERMEDIATE_LOCATION}" "GAS" "${CMAKE_CXX_COMPILER_ID}" "${ASM_OFFSET_SYSTEM_PROCESSOR}"
+                    "${ASM_OFFSET_INTERMEDIATE_LOCATION}" "GAS" "${CMAKE_C_COMPILER_ID}" "${ASM_OFFSET_SYSTEM_PROCESSOR}"
                 BYPRODUCTS gen_defines.asm
             )
         endif()
@@ -329,7 +329,7 @@ if(WIN32)
                 SHARED
                 ${NORMAL_LOADER_SRCS}
                 ${LOADER_UNKNOWN_CHAIN_LIBRARY}
-                ${CMAKE_CURRENT_SOURCE_DIR}/vulkan-1.def
+                ${CMAKE_CURRENT_SOURCE_DIR}/${API_TYPE}-1.def
                 ${RC_FILE_LOCATION})
 
     target_link_libraries(vulkan PRIVATE loader_specific_options loader-opt)
@@ -339,7 +339,7 @@ if(WIN32)
     # msvc: vulkan-1.lib / vulkan-1.dll
     set_target_properties(vulkan
                           PROPERTIES
-                          OUTPUT_NAME vulkan-1)
+                          OUTPUT_NAME ${API_TYPE}-1)
     if(MINGW)
         # generate the same DLL with mingw
         set_target_properties(vulkan
@@ -378,10 +378,15 @@ else()
 
     set_target_properties(vulkan PROPERTIES
         SOVERSION "1"
-        VERSION ${VULKAN_LOADER_VERSION}
+        VERSION "${VULKAN_LOADER_VERSION}"
     )
 
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+
     target_link_libraries(vulkan PRIVATE ${CMAKE_DL_LIBS} m Threads::Threads)
+
+    set_target_properties(vulkan PROPERTIES OUTPUT_NAME ${API_TYPE})
 
     if (LOADER_ENABLE_ADDRESS_SANITIZER)
         target_compile_options(vulkan PUBLIC -fsanitize=address)
@@ -420,13 +425,6 @@ else()
             target_compile_definitions(vulkan-framework PRIVATE MODIFY_UNKNOWN_FUNCTION_DECLS)
         endif()
 
-        # Workaround linker warning: https://github.com/KhronosGroup/Vulkan-Loader/issues/1332
-        set(APPLE_VULKAN_LOADER_VERSION "${VULKAN_LOADER_VERSION_MAJOR}.${VULKAN_LOADER_VERSION_MINOR}.0")
-
-        message(STATUS "APPLE_VULKAN_LOADER_VERSION = ${APPLE_VULKAN_LOADER_VERSION}")
-
-        set_target_properties(vulkan PROPERTIES VERSION ${APPLE_VULKAN_LOADER_VERSION})
-
         # The FRAMEWORK_VERSION needs to be "A" here so that Xcode code-signing works when a user adds their framework to an Xcode
         # project and does "Sign on Copy". It would have been nicer to use "1" to denote Vulkan 1. Although Apple docs say that a
         # framework version does not have to be "A", this part of the Apple toolchain expects it.
@@ -436,11 +434,20 @@ else()
             OUTPUT_NAME vulkan
             FRAMEWORK TRUE
             FRAMEWORK_VERSION A
-            VERSION "${APPLE_VULKAN_LOADER_VERSION}"
+            VERSION "${VULKAN_LOADER_VERSION}"
             SOVERSION "1.0.0"
             MACOSX_FRAMEWORK_IDENTIFIER com.lunarg.vulkanFramework
             PUBLIC_HEADER "${FRAMEWORK_HEADERS}"
         )
+
+        # Workaround linker warning: https://github.com/KhronosGroup/Vulkan-Loader/issues/1332
+        #
+        # MACHO_CURRENT_VERSION specifically applies to the -current_version linker option which is the
+        # linker warning we are trying to address.
+        set(APPLE_VULKAN_LOADER_VERSION "${VULKAN_LOADER_VERSION_MAJOR}.${VULKAN_LOADER_VERSION_MINOR}.0")
+        set_target_properties(vulkan PROPERTIES MACHO_CURRENT_VERSION "${APPLE_VULKAN_LOADER_VERSION}")
+        set_target_properties(vulkan-framework PROPERTIES MACHO_CURRENT_VERSION "${APPLE_VULKAN_LOADER_VERSION}")
+
         install(TARGETS vulkan-framework
             PUBLIC_HEADER DESTINATION vulkan
             FRAMEWORK DESTINATION loader
@@ -456,11 +463,6 @@ endif()
 # common attributes of the vulkan library
 target_link_libraries(vulkan PRIVATE loader_specific_options)
 
-set_target_properties(vulkan PROPERTIES ${LOADER_STANDARD_C_PROPERTIES})
-if (TARGET asm_offset)
-    set_target_properties(asm_offset PROPERTIES ${LOADER_STANDARD_C_PROPERTIES})
-endif()
-
 target_link_libraries(vulkan PRIVATE Vulkan::Headers)
 add_library(Vulkan::Loader ALIAS vulkan)
 
@@ -474,6 +476,13 @@ endif()
 install(TARGETS vulkan EXPORT VulkanLoaderConfig)
 set_target_properties(vulkan PROPERTIES EXPORT_NAME "Loader")
 install(EXPORT VulkanLoaderConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/VulkanLoader NAMESPACE Vulkan::)
+
+# Generate CMake Version File (IE: VulkanLoaderConfigVersion.cmake)
+include(CMakePackageConfigHelpers)
+
+set(version_config "${CMAKE_CURRENT_BINARY_DIR}/generated/VulkanLoaderConfigVersion.cmake")
+write_basic_package_version_file("${version_config}" COMPATIBILITY SameMajorVersion)
+install(FILES "${version_config}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/VulkanLoader)
 
 # Generate PkgConfig File (IE: vulkan.pc)
 # NOTE: Hopefully in the future CMake can generate .pc files natively.
@@ -500,5 +509,5 @@ if (PKG_CONFIG_FOUND)
         file(RELATIVE_PATH CMAKE_INSTALL_INCLUDEDIR_PC ${CMAKE_INSTALL_PREFIX} ${CMAKE_INSTALL_FULL_INCLUDEDIR})
     endif()
     configure_file("vulkan.pc.in" "vulkan.pc" @ONLY)
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/vulkan.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/vulkan.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig" RENAME "${API_TYPE}.pc")
 endif()
