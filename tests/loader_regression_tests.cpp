@@ -1163,6 +1163,66 @@ TEST(EnumeratePhysicalDevices, MultipleAddRemoves) {
     ASSERT_GE(found_items[6], 4U);
 }
 
+TEST(EnumeratePhysicalDevices, OneDriverWithWrongErrorCodes) {
+    FrameworkEnvironment env;
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.set_api_version(VK_API_VERSION_1_1);
+    inst.CheckCreate();
+
+    {
+        env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_INITIALIZATION_FAILED);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_ERROR_INITIALIZATION_FAILED,
+                  env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 0);
+    }
+    {
+        env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_INCOMPATIBLE_DRIVER);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_ERROR_INITIALIZATION_FAILED,
+                  env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 0);
+    }
+    {
+        env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_SURFACE_LOST_KHR);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_ERROR_INITIALIZATION_FAILED,
+                  env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 0);
+    }
+}
+
+TEST(EnumeratePhysicalDevices, TwoDriversOneWithWrongErrorCodes) {
+    FrameworkEnvironment env;
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_physical_device({});
+    TestICD& icd1 = env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2));
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.set_api_version(VK_API_VERSION_1_1);
+    inst.CheckCreate();
+
+    {
+        icd1.set_enum_physical_devices_return_code(VK_ERROR_INITIALIZATION_FAILED);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 1);
+    }
+    {
+        icd1.set_enum_physical_devices_return_code(VK_ERROR_INCOMPATIBLE_DRIVER);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 1);
+    }
+    {
+        icd1.set_enum_physical_devices_return_code(VK_ERROR_SURFACE_LOST_KHR);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 1);
+    }
+}
+
 TEST(CreateDevice, ExtensionNotPresent) {
     FrameworkEnvironment env{};
     env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_physical_device("physical_device_0");
@@ -3784,7 +3844,7 @@ TEST(DuplicateRegistryEntries, Layers) {
 
     auto null_path = env.get_folder(ManifestLocation::null).location() / "test_layer.json";
 
-    env.platform_shim->add_manifest(ManifestCategory::explicit_layer, null_path.str());
+    env.platform_shim->add_manifest(ManifestCategory::explicit_layer, null_path);
 
     const char* layer_name = "TestLayer";
     env.add_explicit_layer(
@@ -3802,7 +3862,7 @@ TEST(DuplicateRegistryEntries, Layers) {
 TEST(DuplicateRegistryEntries, Drivers) {
     FrameworkEnvironment env{};
     auto null_path = env.get_folder(ManifestLocation::null).location() / "test_icd_0.json";
-    env.platform_shim->add_manifest(ManifestCategory::icd, null_path.str());
+    env.platform_shim->add_manifest(ManifestCategory::icd, null_path);
 
     env.add_icd(TestICDDetails{TEST_ICD_PATH_VERSION_2_EXPORT_ICD_GPDPA}.set_discovery_type(ManifestDiscoveryType::null_dir))
         .add_physical_device("physical_device_0")
@@ -3812,7 +3872,7 @@ TEST(DuplicateRegistryEntries, Drivers) {
     InstWrapper inst{env.vulkan_functions};
     FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
     inst.CheckCreate();
-    ASSERT_TRUE(env.debug_log.find(std::string("Skipping adding of json file \"") + null_path.str() +
+    ASSERT_TRUE(env.debug_log.find(std::string("Skipping adding of json file \"") + null_path.string() +
                                    "\" from registry \"HKEY_LOCAL_MACHINE\\" VK_DRIVERS_INFO_REGISTRY_LOC
                                    "\" to the list due to duplication"));
 }
@@ -3820,8 +3880,8 @@ TEST(DuplicateRegistryEntries, Drivers) {
 
 TEST(LibraryLoading, SystemLocations) {
     FrameworkEnvironment env{};
-    EnvVarWrapper ld_library_path("LD_LIBRARY_PATH", env.get_folder(ManifestLocation::driver).location().str());
-    ld_library_path.add_to_list(env.get_folder(ManifestLocation::explicit_layer).location().str());
+    EnvVarWrapper ld_library_path("LD_LIBRARY_PATH", env.get_folder(ManifestLocation::driver).location().string());
+    ld_library_path.add_to_list(narrow(env.get_folder(ManifestLocation::explicit_layer).location()));
 
     auto& driver = env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2).set_library_path_type(LibraryPathType::default_search_paths))
                        .add_physical_device({});
@@ -3860,11 +3920,11 @@ TEST(ManifestDiscovery, ValidSymlinkInXDGEnvVar) {
         .add_physical_device({});
     auto driver_path = env.get_icd_manifest_path(0);
     std::string symlink_name = "symlink_to_driver.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
+    std::filesystem::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
     env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
     int res = symlink(driver_path.c_str(), symlink_path.c_str());
     ASSERT_EQ(res, 0);
-    EnvVarWrapper xdg_config_dirs_env_var{"XDG_CONFIG_DIRS", symlink_path.str()};
+    EnvVarWrapper xdg_config_dirs_env_var{"XDG_CONFIG_DIRS", symlink_path};
 
     InstWrapper inst{env.vulkan_functions};
     FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
@@ -3879,7 +3939,7 @@ TEST(ManifestDiscovery, ValidSymlink) {
 
     auto driver_path = env.get_icd_manifest_path(0);
     std::string symlink_name = "symlink_to_driver.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
+    std::filesystem::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
     env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
     int res = symlink(driver_path.c_str(), symlink_path.c_str());
     ASSERT_EQ(res, 0);
@@ -3895,13 +3955,13 @@ TEST(ManifestDiscovery, ValidSymlink) {
 TEST(ManifestDiscovery, InvalidSymlinkXDGEnvVar) {
     FrameworkEnvironment env{FrameworkSettings{}.set_enable_default_search_paths(false)};
     std::string symlink_name = "symlink_to_nothing.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
-    fs::path invalid_driver_path = env.get_folder(ManifestLocation::driver).location() / "nothing_here.json";
+    std::filesystem::path symlink_path = env.get_folder(ManifestLocation::driver_env_var).location() / symlink_name;
+    std::filesystem::path invalid_driver_path = env.get_folder(ManifestLocation::driver).location() / "nothing_here.json";
     int res = symlink(invalid_driver_path.c_str(), symlink_path.c_str());
     ASSERT_EQ(res, 0);
     env.get_folder(ManifestLocation::driver_env_var).add_existing_file(symlink_name);
 
-    EnvVarWrapper xdg_config_dirs_env_var{symlink_path.str()};
+    EnvVarWrapper xdg_config_dirs_env_var{symlink_path};
 
     InstWrapper inst{env.vulkan_functions};
     FillDebugUtilsCreateDetails(inst.create_info, env.debug_log);
@@ -3912,8 +3972,8 @@ TEST(ManifestDiscovery, InvalidSymlinkXDGEnvVar) {
 TEST(ManifestDiscovery, InvalidSymlink) {
     FrameworkEnvironment env{FrameworkSettings{}.set_enable_default_search_paths(false)};
     std::string symlink_name = "symlink_to_nothing.json";
-    fs::path symlink_path = env.get_folder(ManifestLocation::driver).location() / symlink_name;
-    fs::path invalid_driver_path = env.get_folder(ManifestLocation::driver_env_var).location() / "nothing_here.json";
+    std::filesystem::path symlink_path = env.get_folder(ManifestLocation::driver).location() / symlink_name;
+    std::filesystem::path invalid_driver_path = env.get_folder(ManifestLocation::driver_env_var).location() / "nothing_here.json";
     int res = symlink(invalid_driver_path.c_str(), symlink_path.c_str());
     ASSERT_EQ(res, 0);
     env.get_folder(ManifestLocation::driver).add_existing_file(symlink_name);
@@ -4141,7 +4201,7 @@ TEST(InvalidManifest, ICD) {
 
     for (size_t i = 0; i < invalid_jsons.size(); i++) {
         auto file_name = std::string("invalid_driver_") + std::to_string(i) + ".json";
-        fs::path new_path = env.get_folder(ManifestLocation::driver).write_manifest(file_name, invalid_jsons[i]);
+        std::filesystem::path new_path = env.get_folder(ManifestLocation::driver).write_manifest(file_name, invalid_jsons[i]);
         env.platform_shim->add_manifest(ManifestCategory::icd, new_path);
     }
 
@@ -4165,7 +4225,8 @@ TEST(InvalidManifest, Layer) {
 
     for (size_t i = 0; i < invalid_jsons.size(); i++) {
         auto file_name = std::string("invalid_implicit_layer_") + std::to_string(i) + ".json";
-        fs::path new_path = env.get_folder(ManifestLocation::implicit_layer).write_manifest(file_name, invalid_jsons[i]);
+        std::filesystem::path new_path =
+            env.get_folder(ManifestLocation::implicit_layer).write_manifest(file_name, invalid_jsons[i]);
         env.platform_shim->add_manifest(ManifestCategory::implicit_layer, new_path);
     }
 
@@ -4173,13 +4234,13 @@ TEST(InvalidManifest, Layer) {
     inst.CheckCreate();
 }
 #if defined(WIN32)
-void add_dxgi_adapter(FrameworkEnvironment& env, const char* name, LUID luid, uint32_t vendor_id) {
+void add_dxgi_adapter(FrameworkEnvironment& env, std::filesystem::path const& name, LUID luid, uint32_t vendor_id) {
     auto& driver = env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_6).set_discovery_type(ManifestDiscoveryType::null_dir));
     driver.set_min_icd_interface_version(5);
     driver.set_max_icd_interface_version(6);
     driver.setup_WSI();
     driver.set_icd_api_version(VK_API_VERSION_1_1);
-    driver.physical_devices.emplace_back(name);
+    driver.physical_devices.emplace_back(name.string());
     auto& pd0 = driver.physical_devices.back();
     pd0.properties.apiVersion = VK_API_VERSION_1_1;
     driver.set_adapterLUID(luid);
@@ -4198,8 +4259,7 @@ void add_dxgi_adapter(FrameworkEnvironment& env, const char* name, LUID luid, ui
         DXGI_ADAPTER_DESC1 desc{};
         desc.VendorId = known_driver_list.at(vendor_id).vendor_id;
         desc.AdapterLuid = luid;
-        auto wide_name = conver_str_to_wstr(name);
-        wcsncpy_s(desc.Description, 128, wide_name.c_str(), wide_name.size());
+        wcsncpy_s(desc.Description, 128, name.c_str(), name.native().size());
         env.platform_shim->add_dxgi_adapter(GpuType::discrete, desc);
 
         env.platform_shim->add_d3dkmt_adapter(
@@ -4363,4 +4423,375 @@ TEST(EnumerateAdapterPhysicalDevices, SameAdapterLUID_same_order) {
     env.vulkan_functions.vkGetPhysicalDeviceProperties2(physical_device_handles[2], &props2);
     EXPECT_EQ(layered_driver_properties_msft.underlyingAPI, VK_LAYERED_DRIVER_UNDERLYING_API_NONE_MSFT);
 }
+
+TEST(EnumerateAdapterPhysicalDevices, WrongErrorCodes) {
+    FrameworkEnvironment env;
+
+    add_dxgi_adapter(env, "physical_device_0", LUID{10, 100}, 2);
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().set_api_version(VK_API_VERSION_1_1);
+    inst.CheckCreate();
+    // TestICD only fails in EnumAdapters, so shouldn't fail to query VkPhysicalDevices
+    {
+        env.get_test_icd().set_enum_adapter_physical_devices_return_code(VK_ERROR_INITIALIZATION_FAILED);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 1);
+    }
+    {
+        env.get_test_icd().set_enum_adapter_physical_devices_return_code(VK_ERROR_INCOMPATIBLE_DRIVER);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 1);
+    }
+    {
+        env.get_test_icd().set_enum_adapter_physical_devices_return_code(VK_ERROR_SURFACE_LOST_KHR);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_SUCCESS, env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 1);
+    }
+
+    // TestICD fails in EnumPhysDevs, should return VK_ERROR_INCOMPATIBLE_DRIVER
+    auto check_icds = [&env, &inst] {
+        env.get_test_icd().set_enum_adapter_physical_devices_return_code(VK_ERROR_INITIALIZATION_FAILED);
+        uint32_t returned_physical_count = 0;
+        EXPECT_EQ(VK_ERROR_INITIALIZATION_FAILED,
+                  env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 0);
+
+        env.get_test_icd().set_enum_adapter_physical_devices_return_code(VK_ERROR_INCOMPATIBLE_DRIVER);
+        returned_physical_count = 0;
+        EXPECT_EQ(VK_ERROR_INITIALIZATION_FAILED,
+                  env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 0);
+
+        env.get_test_icd().set_enum_adapter_physical_devices_return_code(VK_ERROR_SURFACE_LOST_KHR);
+        returned_physical_count = 0;
+        EXPECT_EQ(VK_ERROR_INITIALIZATION_FAILED,
+                  env.vulkan_functions.vkEnumeratePhysicalDevices(inst.inst, &returned_physical_count, nullptr));
+        EXPECT_EQ(returned_physical_count, 0);
+    };
+
+    // TestICD fails in EnumPhysDevs, should return VK_ERROR_INCOMPATIBLE_DRIVER
+    env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_INITIALIZATION_FAILED);
+    check_icds();
+
+    // TestICD fails in EnumPhysDevs, should return VK_ERROR_INCOMPATIBLE_DRIVER
+    env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_INCOMPATIBLE_DRIVER);
+    check_icds();
+
+    // TestICD fails in EnumPhysDevs, should return VK_ERROR_INCOMPATIBLE_DRIVER
+    env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_SURFACE_LOST_KHR);
+    check_icds();
+}
 #endif  // defined(WIN32)
+
+void try_create_swapchain(InstWrapper& inst, VkPhysicalDevice physical_device, DeviceWrapper& dev, VkSurfaceKHR const& surface) {
+    PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR = inst.load("vkGetPhysicalDeviceSurfaceSupportKHR");
+    PFN_vkCreateSwapchainKHR CreateSwapchainKHR = dev.load("vkCreateSwapchainKHR");
+    PFN_vkGetSwapchainImagesKHR GetSwapchainImagesKHR = dev.load("vkGetSwapchainImagesKHR");
+    PFN_vkDestroySwapchainKHR DestroySwapchainKHR = dev.load("vkDestroySwapchainKHR");
+    ASSERT_TRUE(nullptr != GetPhysicalDeviceSurfaceSupportKHR);
+    ASSERT_TRUE(nullptr != CreateSwapchainKHR);
+    ASSERT_TRUE(nullptr != GetSwapchainImagesKHR);
+    ASSERT_TRUE(nullptr != DestroySwapchainKHR);
+
+    VkBool32 supported = false;
+    ASSERT_EQ(VK_SUCCESS, GetPhysicalDeviceSurfaceSupportKHR(physical_device, 0, surface, &supported));
+    ASSERT_EQ(supported, VK_TRUE);
+
+    VkSwapchainKHR swapchain{};
+    VkSwapchainCreateInfoKHR swap_create_info{};
+    swap_create_info.surface = surface;
+
+    ASSERT_EQ(VK_SUCCESS, CreateSwapchainKHR(dev, &swap_create_info, nullptr, &swapchain));
+    uint32_t count = 0;
+    ASSERT_EQ(VK_SUCCESS, GetSwapchainImagesKHR(dev, swapchain, &count, nullptr));
+    ASSERT_GT(count, 0U);
+    std::array<VkImage, 16> images;
+    ASSERT_EQ(VK_SUCCESS, GetSwapchainImagesKHR(dev, swapchain, &count, images.data()));
+    DestroySwapchainKHR(dev, swapchain, nullptr);
+}
+
+void add_driver_for_unloading_testing(FrameworkEnvironment& env) {
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2))
+        .add_instance_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+        .setup_WSI()
+        .add_physical_device(PhysicalDevice{}
+                                 .add_extension("VK_KHR_swapchain")
+                                 .add_queue_family_properties({{VK_QUEUE_GRAPHICS_BIT, 1, 0, {1, 1, 1}}, true})
+                                 .finish());
+}
+
+void add_empty_driver_for_unloading_testing(FrameworkEnvironment& env) {
+    env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2)).add_instance_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME).setup_WSI();
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, InterspersedThroughout) {
+    FrameworkEnvironment env{};
+    add_empty_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+
+    DebugUtilsLogger debug_log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().add_extension("VK_EXT_debug_report");
+    FillDebugUtilsCreateDetails(inst.create_info, debug_log);
+    inst.CheckCreate();
+    DebugUtilsWrapper log{inst};
+    ASSERT_EQ(VK_SUCCESS, CreateDebugUtilsMessenger(log));
+
+    PFN_vkSubmitDebugUtilsMessageEXT submit_message = inst.load("vkSubmitDebugUtilsMessageEXT");
+    ASSERT_TRUE(submit_message != nullptr);
+
+    VkSurfaceKHR pre_surface{};
+    ASSERT_EQ(VK_SUCCESS, create_surface(inst, pre_surface));
+    WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR> pre_enum_phys_devs_surface{
+        pre_surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR};
+
+    VkDebugReportCallbackEXT debug_callback{};
+    VkDebugReportCallbackCreateInfoEXT debug_report_create_info{};
+    ASSERT_EQ(VK_SUCCESS, create_debug_callback(inst, debug_report_create_info, debug_callback));
+    WrappedHandle<VkDebugReportCallbackEXT, VkInstance, PFN_vkDestroyDebugReportCallbackEXT>
+        pre_enum_phys_devs_debug_report_callback{debug_callback, inst.inst, env.vulkan_functions.vkDestroyDebugReportCallbackEXT};
+
+    auto phys_devs = inst.GetPhysDevs();
+    std::vector<WrappedHandle<VkDebugUtilsMessengerEXT, VkInstance, PFN_vkDestroyDebugUtilsMessengerEXT>> messengers;
+    std::vector<WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR>> surfaces;
+    for (uint32_t i = 0; i < 35; i++) {
+        VkDebugUtilsMessengerEXT messenger;
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkCreateDebugUtilsMessengerEXT(inst.inst, log.get(), nullptr, &messenger));
+        messengers.emplace_back(messenger, inst.inst, env.vulkan_functions.vkDestroyDebugUtilsMessengerEXT);
+
+        VkSurfaceKHR surface{};
+        ASSERT_EQ(VK_SUCCESS, create_surface(inst, surface));
+        surfaces.emplace_back(surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR);
+    }
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+        for (const auto& surface : surfaces) {
+            try_create_swapchain(inst, phys_dev, dev, surface.handle);
+        }
+    }
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, InMiddleOfList) {
+    FrameworkEnvironment env{};
+    add_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.add_extension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    inst.create_info.setup_WSI().add_extension("VK_EXT_debug_report");
+    inst.CheckCreate();
+    DebugUtilsWrapper log{inst};
+    ASSERT_EQ(VK_SUCCESS, CreateDebugUtilsMessenger(log));
+
+    VkSurfaceKHR pre_surface{};
+    ASSERT_EQ(VK_SUCCESS, create_surface(inst, pre_surface));
+    WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR> pre_enum_phys_devs_surface{
+        pre_surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR};
+
+    VkDebugReportCallbackEXT debug_callback{};
+    VkDebugReportCallbackCreateInfoEXT debug_report_create_info{};
+    ASSERT_EQ(VK_SUCCESS, create_debug_callback(inst, debug_report_create_info, debug_callback));
+    WrappedHandle<VkDebugReportCallbackEXT, VkInstance, PFN_vkDestroyDebugReportCallbackEXT>
+        pre_enum_phys_devs_debug_report_callback{debug_callback, inst.inst, env.vulkan_functions.vkDestroyDebugReportCallbackEXT};
+
+    auto phys_devs = inst.GetPhysDevs();
+    std::vector<WrappedHandle<VkDebugUtilsMessengerEXT, VkInstance, PFN_vkDestroyDebugUtilsMessengerEXT>> messengers;
+    std::vector<WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR>> surfaces;
+    for (uint32_t i = 0; i < 35; i++) {
+        VkDebugUtilsMessengerEXT messenger;
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkCreateDebugUtilsMessengerEXT(inst.inst, log.get(), nullptr, &messenger));
+        messengers.emplace_back(messenger, inst.inst, env.vulkan_functions.vkDestroyDebugUtilsMessengerEXT);
+
+        VkSurfaceKHR surface{};
+        ASSERT_EQ(VK_SUCCESS, create_surface(inst, surface));
+        surfaces.emplace_back(surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR);
+    }
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+        for (const auto& surface : surfaces) {
+            try_create_swapchain(inst, phys_dev, dev, surface.handle);
+        }
+    }
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, AtFrontAndBack) {
+    FrameworkEnvironment env{};
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+
+    DebugUtilsLogger debug_log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().add_extension("VK_EXT_debug_report");
+    FillDebugUtilsCreateDetails(inst.create_info, debug_log);
+    inst.CheckCreate();
+
+    DebugUtilsWrapper log{inst};
+    ASSERT_EQ(VK_SUCCESS, CreateDebugUtilsMessenger(log));
+
+    VkSurfaceKHR pre_surface{};
+    ASSERT_EQ(VK_SUCCESS, create_surface(inst, pre_surface));
+    WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR> pre_enum_phys_devs_surface{
+        pre_surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR};
+
+    VkDebugReportCallbackEXT debug_callback{};
+    VkDebugReportCallbackCreateInfoEXT debug_report_create_info{};
+    ASSERT_EQ(VK_SUCCESS, create_debug_callback(inst, debug_report_create_info, debug_callback));
+    WrappedHandle<VkDebugReportCallbackEXT, VkInstance, PFN_vkDestroyDebugReportCallbackEXT>
+        pre_enum_phys_devs_debug_report_callback{debug_callback, inst.inst, env.vulkan_functions.vkDestroyDebugReportCallbackEXT};
+
+    auto phys_devs = inst.GetPhysDevs();
+    std::vector<WrappedHandle<VkDebugUtilsMessengerEXT, VkInstance, PFN_vkDestroyDebugUtilsMessengerEXT>> messengers;
+    std::vector<WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR>> surfaces;
+    for (uint32_t i = 0; i < 35; i++) {
+        VkDebugUtilsMessengerEXT messenger;
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkCreateDebugUtilsMessengerEXT(inst.inst, log.get(), nullptr, &messenger));
+        messengers.emplace_back(messenger, inst.inst, env.vulkan_functions.vkDestroyDebugUtilsMessengerEXT);
+
+        VkSurfaceKHR surface{};
+        ASSERT_EQ(VK_SUCCESS, create_surface(inst, surface));
+        surfaces.emplace_back(surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR);
+    }
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+
+        for (const auto& surface : surfaces) {
+            try_create_swapchain(inst, phys_dev, dev, surface.handle);
+        }
+    }
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, NoPhysicalDevices) {
+    FrameworkEnvironment env{};
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+
+    DebugUtilsLogger debug_log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().add_extension("VK_EXT_debug_report");
+    FillDebugUtilsCreateDetails(inst.create_info, debug_log);
+    inst.CheckCreate();
+    DebugUtilsWrapper log{inst};
+    ASSERT_EQ(VK_SUCCESS, CreateDebugUtilsMessenger(log));
+
+    VkSurfaceKHR pre_surface{};
+    ASSERT_EQ(VK_SUCCESS, create_surface(inst, pre_surface));
+    WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR> pre_enum_phys_devs_surface{
+        pre_surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR};
+
+    VkDebugReportCallbackEXT debug_callback{};
+    VkDebugReportCallbackCreateInfoEXT debug_report_create_info{};
+    ASSERT_EQ(VK_SUCCESS, create_debug_callback(inst, debug_report_create_info, debug_callback));
+    WrappedHandle<VkDebugReportCallbackEXT, VkInstance, PFN_vkDestroyDebugReportCallbackEXT>
+        pre_enum_phys_devs_debug_report_callback{debug_callback, inst.inst, env.vulkan_functions.vkDestroyDebugReportCallbackEXT};
+
+    // No physical devices == VK_ERROR_INITIALIZATION_FAILED
+    inst.GetPhysDevs(VK_ERROR_INITIALIZATION_FAILED);
+
+    std::vector<WrappedHandle<VkDebugUtilsMessengerEXT, VkInstance, PFN_vkDestroyDebugUtilsMessengerEXT>> messengers;
+    std::vector<WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR>> surfaces;
+    for (uint32_t i = 0; i < 35; i++) {
+        VkDebugUtilsMessengerEXT messenger;
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkCreateDebugUtilsMessengerEXT(inst.inst, log.get(), nullptr, &messenger));
+        messengers.emplace_back(messenger, inst.inst, env.vulkan_functions.vkDestroyDebugUtilsMessengerEXT);
+
+        VkSurfaceKHR surface{};
+        ASSERT_EQ(VK_SUCCESS, create_surface(inst, surface));
+        surfaces.emplace_back(surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR);
+    }
+}
+
+TEST(DriverUnloadingFromZeroPhysDevs, HandleRecreation) {
+    FrameworkEnvironment env{};
+    add_empty_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+    add_driver_for_unloading_testing(env);
+    add_empty_driver_for_unloading_testing(env);
+
+    DebugUtilsLogger debug_log{VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT};
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().add_extension("VK_EXT_debug_report");
+    FillDebugUtilsCreateDetails(inst.create_info, debug_log);
+    inst.CheckCreate();
+    DebugUtilsWrapper log{inst};
+    ASSERT_EQ(VK_SUCCESS, CreateDebugUtilsMessenger(log));
+
+    PFN_vkSubmitDebugUtilsMessageEXT submit_message = inst.load("vkSubmitDebugUtilsMessageEXT");
+    ASSERT_TRUE(submit_message != nullptr);
+
+    VkSurfaceKHR pre_surface{};
+    ASSERT_EQ(VK_SUCCESS, create_surface(inst, pre_surface));
+    WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR> pre_enum_phys_devs_surface{
+        pre_surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR};
+
+    VkDebugReportCallbackEXT debug_callback{};
+    VkDebugReportCallbackCreateInfoEXT debug_report_create_info{};
+    ASSERT_EQ(VK_SUCCESS, create_debug_callback(inst, debug_report_create_info, debug_callback));
+    WrappedHandle<VkDebugReportCallbackEXT, VkInstance, PFN_vkDestroyDebugReportCallbackEXT>
+        pre_enum_phys_devs_debug_report_callback{debug_callback, inst.inst, env.vulkan_functions.vkDestroyDebugReportCallbackEXT};
+
+    auto phys_devs = inst.GetPhysDevs();
+    std::vector<WrappedHandle<VkDebugUtilsMessengerEXT, VkInstance, PFN_vkDestroyDebugUtilsMessengerEXT>> messengers;
+    std::vector<WrappedHandle<VkSurfaceKHR, VkInstance, PFN_vkDestroySurfaceKHR>> surfaces;
+    for (uint32_t i = 0; i < 35; i++) {
+        VkDebugUtilsMessengerEXT messenger;
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkCreateDebugUtilsMessengerEXT(inst.inst, log.get(), nullptr, &messenger));
+        messengers.emplace_back(messenger, inst.inst, env.vulkan_functions.vkDestroyDebugUtilsMessengerEXT);
+
+        VkSurfaceKHR surface{};
+        ASSERT_EQ(VK_SUCCESS, create_surface(inst, surface));
+        surfaces.emplace_back(surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR);
+    }
+    // Remove some elements arbitrarily - remove 15 of each
+    // Do it backwards so the indexes are 'corect'
+    for (uint32_t i = 31; i > 2; i -= 2) {
+        messengers.erase(messengers.begin() + i);
+        surfaces.erase(surfaces.begin() + i);
+    }
+    // Add in another 100
+    for (uint32_t i = 0; i < 100; i++) {
+        VkDebugUtilsMessengerEXT messenger;
+        ASSERT_EQ(VK_SUCCESS, env.vulkan_functions.vkCreateDebugUtilsMessengerEXT(inst.inst, log.get(), nullptr, &messenger));
+        messengers.emplace_back(messenger, inst.inst, env.vulkan_functions.vkDestroyDebugUtilsMessengerEXT);
+
+        VkSurfaceKHR surface{};
+        ASSERT_EQ(VK_SUCCESS, create_surface(inst, surface));
+        surfaces.emplace_back(surface, inst.inst, env.vulkan_functions.vkDestroySurfaceKHR);
+    }
+    for (const auto& phys_dev : phys_devs) {
+        DeviceWrapper dev{inst};
+        dev.create_info.add_extension("VK_KHR_swapchain");
+        dev.CheckCreate(phys_dev);
+        for (const auto& surface : surfaces) {
+            try_create_swapchain(inst, phys_dev, dev, surface.handle);
+        }
+    }
+    VkDebugUtilsMessengerCallbackDataEXT data{};
+    data.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
+    data.pMessage = "I'm a test message!";
+    data.messageIdNumber = 1;
+    submit_message(inst.inst, VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT, &data);
+
+    ASSERT_EQ(120U + 1U, log.count(data.pMessage));
+}
