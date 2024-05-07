@@ -1,3 +1,35 @@
+vulkan-loader (1.3.283.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.283
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.0 to 3.25.1
+
+  [ Charles Giessen ]
+  * Gracefully handle error results from vkEnumeratePhysicalDevices
+  * Add simple timer of ICD preloading in live tests
+  * Unload drivers which report 0 physical devices
+  * Rename total_icd_count to icd_terms_count
+  * Enhance driver unloading tests
+  * Fix TestICD enabled instance extension tracking
+  * Use ICD lib_name in error reporting instead of index
+  * Enhance DriverUnloading tests
+  * Refactor instance level objects to not use icd_index
+  * ci: Update to python 3.11
+  * Add missing VKAPI_ATTR/VKAPI_CALL in test_icd.cpp
+  * Add VK_LAYER_PATH ordering test
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.1 to 3.25.3
+  * Allow layers to call global functions in vkCreateInstance
+  * Fix tests framework_config.h to work all the time
+  * Use std::filesystem instead of custom fs::path
+  * Add Create/DestroyDebugReportCallback to test_icd
+  * Destroy Instance objects before Instance & use correct allocator
+
+ -- john <john@odin>  Tue, 07 May 2024 09:18:47 -0600
+
 vulkan-loader (1.3.282.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ dependabot[bot] ]
