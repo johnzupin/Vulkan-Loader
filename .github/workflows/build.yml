@@ -233,7 +233,7 @@ jobs:
           - run: cmake --install build --prefix build/install
 
     mac:
-        runs-on: macos-11
+        runs-on: macos-12
         strategy:
             matrix:
                 config: [ Debug, Release ]
@@ -352,6 +352,27 @@ jobs:
             -D UPDATE_DEPS=ON \
             -D CMAKE_BUILD_TYPE=Release \
             -D BUILD_WERROR=ON \
+            -G Ninja
+        - run: cmake --build build
+        - run: cmake --install build --prefix /tmp
+
+    mingw-use-gas:
+      runs-on: windows-2022
+      defaults:
+        run:
+          shell: bash
+      steps:
+        - uses: actions/checkout@v4
+        - uses: actions/setup-python@v5
+          with:
+            python-version: '3.11'
+        - uses: lukka/get-cmake@latest
+        - run: |
+            cmake -S. -B build \
+            -D UPDATE_DEPS=ON \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D BUILD_WERROR=ON \
+            -D USE_GAS=ON \
             -G Ninja
         - run: cmake --build build
         - run: cmake --install build --prefix /tmp
