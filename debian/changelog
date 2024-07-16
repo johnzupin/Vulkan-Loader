@@ -1,3 +1,81 @@
+vulkan-loader (1.3.290.0~rc1-1lunarg24.04-1) noble; urgency=medium
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.284
+
+  [ Charles Giessen ]
+  * Check for NULL in unloading of preloaded-icd's
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.285
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.3 to 3.25.5
+
+  [ Charles Giessen ]
+  * Remove faulty fallback for unknown functions
+
+  [ Daniel Rakos ]
+  * tests: Allow test ICD to handle NULL pApplicationInfo
+
+  [ Charles Giessen ]
+  * Change loader-unknown-chain into a STATIC library
+
+  [ Kacper Michajłow ]
+  * build: Normalize CMAKE_SYSTEM_PROCESSOR before use
+  * build: Fix compilation with USE_GAS and WIN32
+  * ci: Add mingw build test for USE_GAS=ON
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.5 to 3.25.6
+
+  [ dependabot[bot] ]
+  * build(deps): bump jidicula/clang-format-action from 4.11.0 to 4.12.0
+
+  [ Charles Giessen ]
+  * Fix GN build by removing unnecessary files
+
+  [ dependabot[bot] ]
+  * build(deps): bump jidicula/clang-format-action from 4.12.0 to 4.13.0
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.286
+  * build: Update to header 1.3.287
+  * ci: Disable GHA windows build until image is fixed
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.6 to 3.25.8
+
+  [ Charles Giessen ]
+  * Fix preloaded icd's being freed with custom allocators
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.288
+  * Revert "ci: Disable GHA windows build until image is fixed"
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.8 to 3.25.10
+
+  [ Charles Giessen ]
+  * Update CI to macOS 12
+  * Update documentation of loader settings registry location
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.289
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.25.10 to 3.25.11
+
+  [ Charles Giessen ]
+  * Add clangd .cache to .gitignore
+  * Add unknown functions assembly code for linux-armhf
+  * Fix RegCloseKey exeption when double-closing hKeys
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.290
+
+ -- john <john@odin>  Tue, 16 Jul 2024 11:38:28 -0600
+
 vulkan-loader (1.3.283.0~rc2-1lunarg22.04-1) jammy; urgency=medium
 
   [ Charles Giessen ]
