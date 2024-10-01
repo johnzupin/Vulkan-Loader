@@ -2573,7 +2573,8 @@ VkResult loader_read_layer_json(const struct loader_instance *inst, struct loade
         result = loader_parse_json_string(functions, "vkGetInstanceProcAddr", &props.functions.str_gipa);
         if (result == VK_ERROR_OUT_OF_HOST_MEMORY) goto out;
 
-        if (props.functions.str_gipa && loader_check_version_meets_required(loader_combine_version(1, 1, 0), version)) {
+        if (NULL == props.functions.str_negotiate_interface && props.functions.str_gipa &&
+            loader_check_version_meets_required(loader_combine_version(1, 1, 0), version)) {
             loader_log(inst, VULKAN_LOADER_INFO_BIT, 0,
                        "Layer \"%s\" using deprecated \'vkGetInstanceProcAddr\' tag which was deprecated starting with JSON "
                        "file version 1.1.0. The new vkNegotiateLoaderLayerInterfaceVersion function is preferred, though for "
@@ -2584,7 +2585,8 @@ VkResult loader_read_layer_json(const struct loader_instance *inst, struct loade
         result = loader_parse_json_string(functions, "vkGetDeviceProcAddr", &props.functions.str_gdpa);
         if (result == VK_ERROR_OUT_OF_HOST_MEMORY) goto out;
 
-        if (props.functions.str_gdpa && loader_check_version_meets_required(loader_combine_version(1, 1, 0), version)) {
+        if (NULL == props.functions.str_negotiate_interface && props.functions.str_gdpa &&
+            loader_check_version_meets_required(loader_combine_version(1, 1, 0), version)) {
             loader_log(inst, VULKAN_LOADER_INFO_BIT, 0,
                        "Layer \"%s\" using deprecated \'vkGetDeviceProcAddr\' tag which was deprecated starting with JSON "
                        "file version 1.1.0. The new vkNegotiateLoaderLayerInterfaceVersion function is preferred, though for "
@@ -3146,6 +3148,8 @@ VkResult read_data_files_in_search_paths(const struct loader_instance *inst, enu
 #endif
             break;
         case LOADER_DATA_FILE_MANIFEST_IMPLICIT_LAYER:
+            override_env = loader_secure_getenv(VK_IMPLICIT_LAYER_PATH_ENV_VAR, inst);
+            additional_env = loader_secure_getenv(VK_ADDITIONAL_IMPLICIT_LAYER_PATH_ENV_VAR, inst);
 #if COMMON_UNIX_PLATFORMS
             relative_location = VK_ILAYERS_INFO_RELATIVE_DIR;
 #endif
@@ -3154,8 +3158,8 @@ VkResult read_data_files_in_search_paths(const struct loader_instance *inst, enu
 #endif
             break;
         case LOADER_DATA_FILE_MANIFEST_EXPLICIT_LAYER:
-            override_env = loader_secure_getenv(VK_LAYER_PATH_ENV_VAR, inst);
-            additional_env = loader_secure_getenv(VK_ADDITIONAL_LAYER_PATH_ENV_VAR, inst);
+            override_env = loader_secure_getenv(VK_EXPLICIT_LAYER_PATH_ENV_VAR, inst);
+            additional_env = loader_secure_getenv(VK_ADDITIONAL_EXPLICIT_LAYER_PATH_ENV_VAR, inst);
 #if COMMON_UNIX_PLATFORMS
             relative_location = VK_ELAYERS_INFO_RELATIVE_DIR;
 #endif
@@ -4749,6 +4753,11 @@ VkResult loader_create_instance_chain(const VkInstanceCreateInfo *pCreateInfo, c
     feature_flags = windows_initialize_dxgi();
 #endif
 
+    // The following line of code is actually invalid at least according to the Vulkan spec with header update 1.2.193 and onwards.
+    // The update required calls to vkGetInstanceProcAddr querying "global" functions (which includes vkCreateInstance) to pass NULL
+    // for the instance parameter. Because it wasn't required to be NULL before, there may be layers which expect the loader's
+    // behavior of passing a non-NULL value into vkGetInstanceProcAddr.
+    // In an abundance of caution, the incorrect code remains as is, with a big comment to indicate that its wrong
     PFN_vkCreateInstance fpCreateInstance = (PFN_vkCreateInstance)next_gipa(*created_instance, "vkCreateInstance");
     if (fpCreateInstance) {
         VkLayerInstanceCreateInfo instance_dispatch;
@@ -5936,8 +5945,10 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateDevice(VkPhysicalDevice physical
             dev->driver_extensions.khr_device_group_enabled = true;
         } else if (!strcmp(localCreateInfo.ppEnabledExtensionNames[i], VK_EXT_DEBUG_MARKER_EXTENSION_NAME)) {
             dev->driver_extensions.ext_debug_marker_enabled = true;
-        } else if (!strcmp(localCreateInfo.ppEnabledExtensionNames[i], "VK_EXT_full_screen_exclusive")) {
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+        } else if (!strcmp(localCreateInfo.ppEnabledExtensionNames[i], VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)) {
             dev->driver_extensions.ext_full_screen_exclusive_enabled = true;
+#endif
         } else if (!strcmp(localCreateInfo.ppEnabledExtensionNames[i], VK_KHR_MAINTENANCE_5_EXTENSION_NAME) &&
                    maintenance5_feature_enabled) {
             dev->should_ignore_device_commands_from_newer_version = true;
@@ -5948,10 +5959,14 @@ VKAPI_ATTR VkResult VKAPI_CALL terminator_CreateDevice(VkPhysicalDevice physical
 
     VkPhysicalDeviceProperties properties;
     icd_term->dispatch.GetPhysicalDeviceProperties(phys_dev_term->phys_dev, &properties);
-    if (!dev->driver_extensions.khr_device_group_enabled) {
-        if (properties.apiVersion >= VK_API_VERSION_1_1) {
-            dev->driver_extensions.khr_device_group_enabled = true;
-        }
+    if (properties.apiVersion >= VK_API_VERSION_1_1) {
+        dev->driver_extensions.version_1_1_enabled = true;
+    }
+    if (properties.apiVersion >= VK_API_VERSION_1_2) {
+        dev->driver_extensions.version_1_2_enabled = true;
+    }
+    if (properties.apiVersion >= VK_API_VERSION_1_3) {
+        dev->driver_extensions.version_1_3_enabled = true;
     }
 
     loader_log(icd_term->this_instance, VULKAN_LOADER_LAYER_BIT | VULKAN_LOADER_DRIVER_BIT, 0,
