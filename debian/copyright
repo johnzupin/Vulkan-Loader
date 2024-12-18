@@ -8,46 +8,28 @@ Copyright: 2022, CopyrightLunarG Inc
            2015-2022, LunarG, Inc
            2015-2021, The Khronos Group Inc
            2015-2021, Valve Corporation
-           after any existing copyrights
-           included
 License: Apache-2 or Apache-2.0
 
-Files: cmake/Copyright_cmake.txt
-       cmake/FindDirectFB.cmake
-       cmake/FindX11_XCB.cmake
-Copyright: 2011, Fredrik Höglund <fredrik@kde.org>
-           2008, Helio Chissini de Castro <helio@kde.org>
-           2000-2018, Kitware, Inc
-           2013, Martin Gräßlin <mgraesslin@kde.org>
-           2007, Matthias Kretz <kretz@kde.org>
-License: BSD-3-clause
-
 Files: .github/workflows/*
-       .gn
        BUILD.gn
        CMakeLists.txt
        LICENSE.txt
-       build-gn/secondary/*
-       build-gn/update_deps.sh
-       fuchsia/*
        loader/CMakeLists.txt
        loader/adapters.h
        loader/allocation.c
        loader/allocation.h
        loader/asm_offset.c
+       loader/asm_test_aarch32.S
        loader/asm_test_aarch64.S
        loader/asm_test_x86.S
        loader/debug_utils.c
        loader/debug_utils.h
        loader/dev_ext_trampoline.c
+       loader/dlopen_fuchsia.c
+       loader/dlopen_fuchsia.h
        loader/extension_manual.c
        loader/extension_manual.h
-       loader/generated/loader_generated_header_version.cmake
-       loader/generated/vk_dispatch_table_helper.h
-       loader/generated/vk_layer_dispatch_table.h
-       loader/generated/vk_loader_extensions.c
-       loader/generated/vk_loader_extensions.h
-       loader/generated/vk_object_types.h
+       loader/generated/*
        loader/gpa_helper.c
        loader/gpa_helper.h
        loader/loader.c
@@ -64,12 +46,14 @@ Files: .github/workflows/*
        loader/log.c
        loader/log.h
        loader/phys_dev_ext.c
+       loader/settings.c
+       loader/settings.h
        loader/stack_allocation.h
        loader/terminator.c
        loader/trampoline.c
-       loader/unknown_ext_chain.c
-       loader/unknown_ext_chain_gas_aarch64.S
+       loader/unknown_ext_chain_gas_aarch.S
        loader/unknown_ext_chain_gas_x86.S
+       loader/unknown_ext_chain_marmasm.asm
        loader/unknown_ext_chain_masm.asm
        loader/unknown_function_handling.c
        loader/unknown_function_handling.h
@@ -78,38 +62,49 @@ Files: .github/workflows/*
        loader/vulkan-1.def
        loader/wsi.c
        loader/wsi.h
-       scripts/check_code_format.sh
-       scripts/check_commit_message_format.sh
+       scripts/CMakeLists.txt
+       scripts/CodeCoverage.cmake
        scripts/common_codegen.py
        scripts/dispatch_table_helper_generator.py
+       scripts/generate_loader_rc.py
        scripts/generate_source.py
+       scripts/gn/gn.py
+       scripts/gn/secondary/*
+       scripts/gn/update_deps.sh
        scripts/helper_file_generator.py
        scripts/loader_extension_generator.py
        scripts/loader_genvk.py
-       scripts/loader_versioning_generator.py
        scripts/parse_asm_values.py
        scripts/update_deps.py
        tests/CMakeLists.txt
        tests/framework/CMakeLists.txt
        tests/framework/icd/CMakeLists.txt
        tests/framework/layer/CMakeLists.txt
+       tests/framework/layer/vk_dispatch_table_helper.h
        tests/framework/layer/wrap_objects.cpp
        tests/framework/shim/*
+       tests/integration/*
        tests/live_verification/CMakeLists.txt
        tests/live_verification/dynamic_loader_behavior/CMakeLists.txt
-Copyright: 2015-2021, Google Inc
-           2014-2022, LunarG, Inc
-           2021, NVIDIA CORPORATION & AFFILIATES
+Copyright: 2014, LunarG, Inc
+           2014, The Khronos Group Inc
+           2014, Valve Corporation
+           2018-2020, George Cave <gcave@stablecoder.ca>
+           2015-2021, Google Inc
+           2023, Google LLC
+           2014-2024, LunarG, Inc
+           2021-2023, NVIDIA CORPORATION & AFFILIATES
+           2023, RasterGrid Kft
            2018-2019, The ANGLE Project Authors
            2017, The Glslang Authors
-           2013-2022, The Khronos Group Inc
-           2014-2022, Valve Corporation
+           2013-2024, The Khronos Group Inc
+           2014-2024, Valve Corporation
 License: Apache-2
 
 Files: tests/framework/framework_config.h.in
-       tests/framework/icd/physical_device.h
        tests/framework/icd/test_icd.cpp
        tests/framework/icd/test_icd.h
+       tests/framework/json_writer.h
        tests/framework/layer/layer_util.h
        tests/framework/layer/test_layer.cpp
        tests/framework/layer/test_layer.h
@@ -128,22 +123,27 @@ Files: tests/framework/framework_config.h.in
        tests/live_verification/dynamic_loader_behavior/test_dynamic_loading_and_linking.cpp
        tests/live_verification/dynamic_rendering_get_proc_addr.cpp
        tests/live_verification/macos_static_loader_build.cpp
+       tests/live_verification/time_dynamic_loading.cpp
        tests/loader_alloc_callback_tests.cpp
        tests/loader_debug_ext_tests.cpp
        tests/loader_envvar_tests.cpp
+       tests/loader_fuzz_tests.cpp
        tests/loader_get_proc_addr_tests.cpp
        tests/loader_handle_validation_tests.cpp
        tests/loader_layer_tests.cpp
        tests/loader_phys_dev_inst_ext_tests.cpp
        tests/loader_regression_tests.cpp
+       tests/loader_settings_tests.cpp
        tests/loader_testing_main.cpp
        tests/loader_threading_tests.cpp
        tests/loader_unknown_ext_tests.cpp
        tests/loader_version_tests.cpp
        tests/loader_wsi_tests.cpp
-Copyright: 2021-2022, LunarG, Inc
-           2021-2022, The Khronos Group Inc
-           2021-2022, Valve Corporation
+Copyright: 2021-2024, LunarG, Inc
+           2021-2022, NVIDIA CORPORATION & AFFILIATES
+           2023, RasterGrid Kft
+           2021-2024, The Khronos Group Inc
+           2021-2024, Valve Corporation
 License: MIT/X11
 
 Files: docs/LoaderApplicationInterface.md
@@ -151,19 +151,22 @@ Files: docs/LoaderApplicationInterface.md
        docs/LoaderDriverInterface.md
        docs/LoaderInterfaceArchitecture.md
        docs/LoaderLayerInterface.md
-Copyright: 2015-2022, LunarG, Inc
+Copyright: 2015-2023, LunarG, Inc
 License: CC-BY-ND-4
 
 Files: loader/cJSON.c
        loader/cJSON.h
+       loader/loader_json.c
+       loader/loader_json.h
 Copyright: 2009, Dave Gamble
+           2009-2017, Dave Gamble and cJSON contributors
            2015-2021, LunarG, Inc
            2015-2021, The Khronos Group Inc
            2015-2021, Valve Corporation
 License: Expat
 
 Files: debian/*
-Copyright: 2023, LunarG Inc <johnz@lunarg.com>
+Copyright: 2024, LunarG Inc <johnz@lunarg.com>
            2016, Timo Aaltonen <tjaalton@debian.org>
 License: BSD-3-clause or GPL-3 or MIT
 
