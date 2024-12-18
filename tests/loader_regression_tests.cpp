@@ -1663,7 +1663,8 @@ TEST(TryLoadWrongBinaries, WrongArchLayer) {
     FillDebugUtilsCreateDetails(inst.create_info, log);
     inst.create_info.add_layer(layer_name);
     inst.CheckCreate(VK_ERROR_LAYER_NOT_PRESENT);
-    ASSERT_TRUE(log.find("Layer library architecture doesn't match the current running architecture, skipping this layer"));
+    ASSERT_TRUE(log.find(std::string("The library architecture in layer ") + env.get_shimmed_layer_manifest_path(0).string() +
+                         " doesn't match the current running architecture, skipping this layer"));
 }
 
 TEST(EnumeratePhysicalDeviceGroups, OneCall) {
@@ -3881,7 +3882,7 @@ TEST(DuplicateRegistryEntries, Drivers) {
 TEST(LibraryLoading, SystemLocations) {
     FrameworkEnvironment env{};
     EnvVarWrapper ld_library_path("LD_LIBRARY_PATH", env.get_folder(ManifestLocation::driver).location().string());
-    ld_library_path.add_to_list(narrow(env.get_folder(ManifestLocation::explicit_layer).location()));
+    ld_library_path.add_to_list(env.get_folder(ManifestLocation::explicit_layer).location());
 
     auto& driver = env.add_icd(TestICDDetails(TEST_ICD_PATH_VERSION_2).set_library_path_type(LibraryPathType::default_search_paths))
                        .add_physical_device({});
@@ -4483,6 +4484,28 @@ TEST(EnumerateAdapterPhysicalDevices, WrongErrorCodes) {
     // TestICD fails in EnumPhysDevs, should return VK_ERROR_INCOMPATIBLE_DRIVER
     env.get_test_icd().set_enum_physical_devices_return_code(VK_ERROR_SURFACE_LOST_KHR);
     check_icds();
+}
+
+TEST(EnumerateAdapterPhysicalDevices, ManyAdapters) {
+    FrameworkEnvironment env;
+
+    uint32_t icd_count = 10;
+    for (uint32_t i = 0; i < icd_count; i++) {
+        // Add 2 separate physical devices with the same luid
+        LUID luid{10U + i, static_cast<LONG>(100U + i)};
+        add_dxgi_adapter(env, std::string("physical_device_") + std::to_string(i), luid, 2);
+        add_dxgi_adapter(env, std::string("physical_device_") + std::to_string(i + icd_count), luid, 2);
+    }
+    uint32_t device_count = icd_count * 2;
+    InstWrapper inst{env.vulkan_functions};
+    inst.create_info.setup_WSI().set_api_version(VK_API_VERSION_1_1);
+    inst.CheckCreate();
+
+    auto physical_devices = inst.GetPhysDevs(device_count);
+    for (auto physical_device : physical_devices) {
+        DeviceWrapper dev{inst};
+        dev.CheckCreate(physical_device);
+    }
 }
 #endif  // defined(WIN32)
 

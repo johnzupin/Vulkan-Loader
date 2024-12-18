@@ -67,10 +67,11 @@
 
 #include "shim/shim.h"
 
-#include "icd/physical_device.h"
 #include "icd/test_icd.h"
 
 #include "layer/test_layer.h"
+
+#include FRAMEWORK_CONFIG_HEADER
 
 // Useful defines
 #if COMMON_UNIX_PLATFORMS
@@ -658,6 +659,9 @@ struct FrameworkEnvironment {
     // apply any changes made to FrameworkEnvironment's loader_settings member
     void update_loader_settings(const LoaderSettings& loader_settings) noexcept;
     void remove_loader_settings();
+
+    void write_file_from_source(const char* source_file, ManifestCategory category, ManifestLocation location,
+                                std::string const& file_name);
 
     TestICD& get_test_icd(size_t index = 0) noexcept;
     TestICD& reset_icd(size_t index = 0) noexcept;
