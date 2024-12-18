@@ -27,6 +27,8 @@
 
 #include "test_environment.h"
 
+#include <fstream>
+
 std::filesystem::path get_loader_path() {
     auto loader_path = std::filesystem::path(FRAMEWORK_VULKAN_LIBRARY_PATH);
     auto env_var_res = get_env_var("VK_LOADER_TEST_LOADER_PATH", false);
@@ -198,11 +200,13 @@ InstWrapper& InstWrapper::operator=(InstWrapper&& other) noexcept {
 }
 
 void InstWrapper::CheckCreate(VkResult result_to_check) {
+    handle_assert_null(inst);
     ASSERT_EQ(result_to_check, functions->vkCreateInstance(create_info.get(), callbacks, &inst));
     functions->load_instance_functions(inst);
 }
 
 void InstWrapper::CheckCreateWithInfo(InstanceCreateInfo& create_info, VkResult result_to_check) {
+    handle_assert_null(inst);
     ASSERT_EQ(result_to_check, functions->vkCreateInstance(create_info.get(), callbacks, &inst));
     functions->load_instance_functions(inst);
 }
@@ -297,10 +301,12 @@ DeviceWrapper& DeviceWrapper::operator=(DeviceWrapper&& other) noexcept {
 }
 
 void DeviceWrapper::CheckCreate(VkPhysicalDevice phys_dev, VkResult result_to_check) {
+    handle_assert_null(dev);
     ASSERT_EQ(result_to_check, functions->vkCreateDevice(phys_dev, create_info.get(), callbacks, &dev));
 }
 
 VkResult CreateDebugUtilsMessenger(DebugUtilsWrapper& debug_utils) {
+    handle_assert_null(debug_utils.messenger);
     return debug_utils.local_vkCreateDebugUtilsMessengerEXT(debug_utils.inst, debug_utils.get(), debug_utils.callbacks,
                                                             &debug_utils.messenger);
 }
@@ -522,17 +528,17 @@ TestICD& FrameworkEnvironment::add_icd(TestICDDetails icd_details) noexcept {
                 break;
             case (ManifestDiscoveryType::env_var):
                 if (icd_details.is_dir) {
-                    env_var_vk_icd_filenames.add_to_list(narrow(folder->location()));
+                    env_var_vk_icd_filenames.add_to_list(folder->location());
                 } else {
-                    env_var_vk_icd_filenames.add_to_list(narrow(folder->location() / new_manifest_path));
+                    env_var_vk_icd_filenames.add_to_list(folder->location() / new_manifest_path);
                 }
                 platform_shim->add_known_path(folder->location());
                 break;
             case (ManifestDiscoveryType::add_env_var):
                 if (icd_details.is_dir) {
-                    add_env_var_vk_icd_filenames.add_to_list(narrow(folder->location()));
+                    add_env_var_vk_icd_filenames.add_to_list(folder->location());
                 } else {
-                    add_env_var_vk_icd_filenames.add_to_list(narrow(folder->location() / new_manifest_path));
+                    add_env_var_vk_icd_filenames.add_to_list(folder->location() / new_manifest_path);
                 }
                 platform_shim->add_known_path(folder->location());
                 break;
@@ -584,17 +590,17 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
             if (category == ManifestCategory::explicit_layer) {
                 fs_ptr = &get_folder(ManifestLocation::explicit_layer_env_var);
                 if (layer_details.is_dir) {
-                    env_var_vk_layer_paths.add_to_list(narrow(fs_ptr->location()));
+                    env_var_vk_layer_paths.add_to_list(fs_ptr->location());
                 } else {
-                    env_var_vk_layer_paths.add_to_list(narrow(fs_ptr->location() / layer_details.json_name));
+                    env_var_vk_layer_paths.add_to_list(fs_ptr->location() / layer_details.json_name);
                 }
             }
             if (category == ManifestCategory::implicit_layer) {
                 fs_ptr = &get_folder(ManifestLocation::implicit_layer_env_var);
                 if (layer_details.is_dir) {
-                    env_var_vk_implicit_layer_paths.add_to_list(narrow(fs_ptr->location()));
+                    env_var_vk_implicit_layer_paths.add_to_list(fs_ptr->location());
                 } else {
-                    env_var_vk_implicit_layer_paths.add_to_list(narrow(fs_ptr->location() / layer_details.json_name));
+                    env_var_vk_implicit_layer_paths.add_to_list(fs_ptr->location() / layer_details.json_name);
                 }
             }
             platform_shim->add_known_path(fs_ptr->location());
@@ -603,17 +609,17 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
             if (category == ManifestCategory::explicit_layer) {
                 fs_ptr = &get_folder(ManifestLocation::explicit_layer_add_env_var);
                 if (layer_details.is_dir) {
-                    add_env_var_vk_layer_paths.add_to_list(narrow(fs_ptr->location()));
+                    add_env_var_vk_layer_paths.add_to_list(fs_ptr->location());
                 } else {
-                    add_env_var_vk_layer_paths.add_to_list(narrow(fs_ptr->location() / layer_details.json_name));
+                    add_env_var_vk_layer_paths.add_to_list(fs_ptr->location() / layer_details.json_name);
                 }
             }
             if (category == ManifestCategory::implicit_layer) {
                 fs_ptr = &get_folder(ManifestLocation::implicit_layer_add_env_var);
                 if (layer_details.is_dir) {
-                    add_env_var_vk_implicit_layer_paths.add_to_list(narrow(fs_ptr->location()));
+                    add_env_var_vk_implicit_layer_paths.add_to_list(fs_ptr->location());
                 } else {
-                    add_env_var_vk_implicit_layer_paths.add_to_list(narrow(fs_ptr->location() / layer_details.json_name));
+                    add_env_var_vk_implicit_layer_paths.add_to_list(fs_ptr->location() / layer_details.json_name);
                 }
             }
             platform_shim->add_known_path(fs_ptr->location());
@@ -734,7 +740,7 @@ std::string get_loader_settings_file_contents(const LoaderSettings& loader_setti
             for (const auto& config : setting.layer_configurations) {
                 writer.StartObject();
                 writer.AddKeyedString("name", config.name);
-                writer.AddKeyedString("path", escape_backslashes_for_json(config.path));
+                writer.AddKeyedString("path", config.path.native());
                 writer.AddKeyedString("control", config.control);
                 writer.AddKeyedBool("treat_as_implicit_manifest", config.treat_as_implicit_manifest);
                 writer.EndObject();
@@ -791,6 +797,20 @@ void FrameworkEnvironment::update_loader_settings(const LoaderSettings& settings
 }
 void FrameworkEnvironment::remove_loader_settings() {
     get_folder(ManifestLocation::settings_location).remove("vk_loader_settings.json");
+}
+void FrameworkEnvironment::write_file_from_source(const char* source_file, ManifestCategory category, ManifestLocation location,
+                                                  std::string const& file_name) {
+    std::fstream file{source_file, std::ios_base::in};
+    ASSERT_TRUE(file.is_open());
+    std::stringstream file_stream;
+    file_stream << file.rdbuf();
+
+    auto out_path = get_folder(location).write_manifest(file_name, file_stream.str());
+
+    if (settings.secure_loader_settings)
+        platform_shim->add_manifest(category, out_path);
+    else
+        platform_shim->add_unsecured_manifest(category, out_path);
 }
 
 TestICD& FrameworkEnvironment::get_test_icd(size_t index) noexcept { return icds[index].get_test_icd(); }

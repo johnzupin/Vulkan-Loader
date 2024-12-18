@@ -44,14 +44,10 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
-#include <fstream>
 #include <ostream>
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <utility>
-#include <memory>
-#include <functional>
 #include <filesystem>
 
 #include <cassert>
@@ -102,6 +98,19 @@
 #define FRAMEWORK_EXPORT
 #endif
 
+// Define it here so that json_writer.h has access to these functions
+#if defined(WIN32)
+// Convert an UTF-16 wstring to an UTF-8 string
+std::string narrow(const std::wstring& utf16);
+// Convert an UTF-8 string to an UTF-16 wstring
+std::wstring widen(const std::string& utf8);
+#else
+// Do nothing passthrough for the sake of Windows & UTF-16
+std::string narrow(const std::string& utf16);
+// Do nothing passthrough for the sake of Windows & UTF-16
+std::string widen(const std::string& utf8);
+#endif
+
 #include "json_writer.h"
 
 // get_env_var() - returns a std::string of `name`. if report_failure is true, then it will log to stderr that it didn't find the
@@ -149,6 +158,15 @@ struct EnvVarWrapper {
         cur_value += list_item;
         set_env_var();
     }
+#if defined(WIN32)
+    void add_to_list(std::wstring const& list_item) {
+        if (!cur_value.empty()) {
+            cur_value += OS_ENV_VAR_LIST_SEPARATOR;
+        }
+        cur_value += narrow(list_item);
+        set_env_var();
+    }
+#endif
     void remove_value() const { remove_env_var(); }
     const char* get() const { return name.c_str(); }
     const char* value() const { return cur_value.c_str(); }
@@ -180,8 +198,6 @@ void print_error_message(LSTATUS status, const char* function_name, std::string 
 struct ManifestICD;    // forward declaration for FolderManager::write
 struct ManifestLayer;  // forward declaration for FolderManager::write
 
-std::string escape_backslashes_for_json(std::string const& in_path);
-std::string escape_backslashes_for_json(std::filesystem::path const& in_path);
 namespace fs {
 
 int create_folder(std::filesystem::path const& path);
@@ -226,18 +242,6 @@ class FolderManager {
 inline void copy_string_to_char_array(std::string const& src, char* dst, size_t size_dst) { dst[src.copy(dst, size_dst - 1)] = 0; }
 
 #if defined(WIN32)
-// Convert an UTF-16 wstring to an UTF-8 string
-std::string narrow(const std::wstring& utf16);
-// Convert an UTF-8 string to an UTF-16 wstring
-std::wstring widen(const std::string& utf8);
-#else
-// Do nothing passthrough for the sake of Windows & UTF-16
-std::string narrow(const std::string& utf16);
-// Do nothing passthrough for the sake of Windows & UTF-16
-std::string widen(const std::string& utf8);
-#endif
-
-#if defined(WIN32)
 typedef HMODULE loader_platform_dl_handle;
 inline loader_platform_dl_handle loader_platform_open_library(const wchar_t* lib_path) {
     // Try loading the library the original way first.
@@ -272,7 +276,13 @@ inline loader_platform_dl_handle loader_platform_open_library(const char* libPat
 inline void loader_platform_open_library_print_error(std::filesystem::path const& libPath) {
     std::wcerr << "Unable to open library: " << libPath << " due to: " << dlerror() << "\n";
 }
-inline void loader_platform_close_library(loader_platform_dl_handle library) { dlclose(library); }
+inline void loader_platform_close_library(loader_platform_dl_handle library) {
+    char* loader_disable_dynamic_library_unloading_env_var = getenv("VK_LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING");
+    if (NULL == loader_disable_dynamic_library_unloading_env_var ||
+        0 != strncmp(loader_disable_dynamic_library_unloading_env_var, "1", 2)) {
+        dlclose(library);
+    }
+}
 inline void* loader_platform_get_proc_address(loader_platform_dl_handle library, const char* name) {
     assert(library);
     assert(name);
@@ -799,6 +809,15 @@ inline bool operator==(const VkSurfaceCapabilitiesKHR& props1, const VkSurfaceCa
            props1.currentTransform == props2.currentTransform && props1.supportedCompositeAlpha == props2.supportedCompositeAlpha &&
            props1.supportedUsageFlags == props2.supportedUsageFlags;
 }
+inline bool operator==(const VkSurfacePresentScalingCapabilitiesEXT& caps1, const VkSurfacePresentScalingCapabilitiesEXT& caps2) {
+    return caps1.supportedPresentScaling == caps2.supportedPresentScaling &&
+           caps1.supportedPresentGravityX == caps2.supportedPresentGravityX &&
+           caps1.supportedPresentGravityY == caps2.supportedPresentGravityY &&
+           caps1.minScaledImageExtent.width == caps2.minScaledImageExtent.width &&
+           caps1.minScaledImageExtent.height == caps2.minScaledImageExtent.height &&
+           caps1.maxScaledImageExtent.width == caps2.maxScaledImageExtent.width &&
+           caps1.maxScaledImageExtent.height == caps2.maxScaledImageExtent.height;
+}
 inline bool operator==(const VkSurfaceFormatKHR& format1, const VkSurfaceFormatKHR& format2) {
     return format1.format == format2.format && format1.colorSpace == format2.colorSpace;
 }
@@ -845,6 +864,9 @@ inline bool operator==(const VkDisplayPlanePropertiesKHR& props1, const VkDispla
 }
 inline bool operator==(const VkDisplayPlanePropertiesKHR& props1, const VkDisplayPlaneProperties2KHR& props2) {
     return props1 == props2.displayPlaneProperties;
+}
+inline bool operator==(const VkExtent2D& ext1, const VkExtent2D& ext2) {
+    return ext1.height == ext2.height && ext1.width == ext2.width;
 }
 // Allow comparison of vectors of different types as long as their elements are comparable (just has to make sure to only apply when
 // T != U)
@@ -979,7 +1001,7 @@ inline std::string test_platform_executable_path() {
     if (ret > buffer.size()) return NULL;
     buffer.resize(ret);
     buffer[ret] = '\0';
-    return buffer;
+    return narrow(std::filesystem::path(buffer).native());
 }
 
 #endif
