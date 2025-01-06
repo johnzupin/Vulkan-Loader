@@ -1,3 +1,183 @@
+vulkan-loader (1.4.304.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.26.6 to 3.26.7
+
+  [ Charles Giessen ]
+  * Define _FILE_OFFSET_BITS=64 for 32 bit linux builds
+  * Fix Windows build warning about mismatching library and def file names
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.26.7 to 3.26.8
+  * Only initialize mutexes during DllMain
+
+  [ Jordan Peck ]
+  * Fix windows_read_sorted_physical_devices buffer overrun
+
+  [ Charles Giessen ]
+  * Add tests fo windows read sorted adapters buffer overrun
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.296
+
+  [ Charles Giessen ]
+  * Emulate VK_EXT_surface_maintenance1 if not supported by a driver
+  * Use memcpy to access sType in pNext chains
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.26.8 to 3.26.10
+  * Cleanup Test Framework headers
+  * Cleanup header usage
+  * Fix pylint issues in codegen script
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.297
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.26.10 to 3.26.12
+  * build: Update to header 1.3.298
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.26.12 to 3.26.13
+  * build: Update to header 1.3.299
+
+  [ Charles Giessen ]
+  * Use correct comment character in marmasm.asm
+  * Add Ninja + MSVC/clang-cl workaround for MARMASM
+  * Update github actions to macos-13
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.300
+
+  [ Máté Ferenc Nagy-Egri ]
+  * scripts: Handle remote URL change in update_deps.py
+  * scripts: Fix user self-hosting dependency in update_deps.py
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.26.13 to 3.27.0
+
+  [ Satadru Pramanik, DO, MPH, MEng ]
+  * Add armv7l/armv8l support to loader/CMakeLists.txt
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.301
+
+  [ Spencer Fricke ]
+  * ci: Build dependency for Github Actions
+
+  [ Jeremy Gebben ]
+  * scripts: Make generate_source.py look harder for vk.xml
+
+  [ DavidKorczynski ]
+  * cjson: add NULL check prior to strcmp
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.27.0 to 3.27.1
+
+  [ Charles Giessen ]
+  * Make tests respect VK_LOADER_DISABLE_DYNAMIC_LIBRARY_UNLOADING
+  * Add handle checking to test instance & device creation
+  * Fix VK_INSTANCE_LAYERS bug when using vk_loader_settings.json
+  * Expand loader settings tests
+  * Add explicit layer to SettingsFile ImplicitLayer env-var test
+  * Make vkEnumInstExtProps return VK_INCOMPLETE correctly
+  * Expand SettingsFile test for VK_INSTANCE_LAYERS
+  * Intercept loader_log in testing framework
+  * Re-add ReadDir interception on macOS
+  * Add Implicit Layer Enable Env Var tessettings file test
+  * Use VK_LOADER_DEBUG if settings stderr_log is empty
+  * Redo logic of check_if_layer_is_in_list()
+  * Add settings test for layer control OFF & VK_INSTANCE_LAYERS
+  * Add ImplicitLayersNotAccidentallyEnabled test
+  * Write the Enable Env Var in the loader log
+  * Reuse library loading code in pre-instance functions
+  * Fix layers with pre-inst funcs from being loaded erroneously
+
+  [ Juan Ramos ]
+  * Fix CMake 3.31 builds for WIN32
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.27.1 to 3.27.4
+
+  [ Charles Giessen ]
+  * Log Settings file Stderr Log Filters
+  * Make Settings file "ON" take priority over disable env-var
+  * Add test which enables most layer env-vars at once
+  * Only set global debug level from settings if above 0
+  * Correctly check if settings file exists on windows
+  * Log what caused each layer to be enabled
+  * Log when Filter Env-Vars act when settings file is active
+  * Add more logging when the settings file has invalid members
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.3.302
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.27.4 to 3.27.5
+
+  [ Charles Giessen ]
+  * Add bad json input tests found by OSS-Fuzz
+  * Add loader_json.h/.c for custom loader code
+  * Update cJSON to latest version
+  * Removed unused functions from cJSON
+  * Use snprintf in updated cJSON
+  * Modify cJSON to not surround strings with ""
+  * Remove cJSON escaping backslashes
+  * Reimplement OOM and VkAllocationCallbacks in cJSON
+  * Pass error string using "%s" format specifier
+  * Add compiler checking to loader_log arguments
+  * Fix O(n^2) json parsing by not using cJSON_GetArrayItem
+  * Detect when recursive meta-layer's are present
+  * Log the layer name with manifest loading messages
+  * Fix tests not respecting dll unloading env-var
+  * Add assert for unknown free's in test's MemoryTracker
+  * Simplify json string copy routine
+  * Refactor get_loader_settings to not allocate app_keys
+  * Better error checking of loader_parse_json functions
+  * Fix append_str_to_string_list leaking during OOM
+  * Refactor manifest parsing to use less allocations
+  * Add bounds check to memmove in loader_remove_layer_in_list
+  * Free ICD "library_path" when it contains an empty string
+  * Move narrow() & escape_backslashes_for_json() into common code
+
+  [ Shahbaz Youssefi ]
+  * Fix GN build
+
+  [ Sushanth Rajasankar ]
+  * In chromium official builds remove dev build marking from vulkan-1.dll
+
+  [ dependabot[bot] ]
+  * build(deps): bump jidicula/clang-format-action from 4.13.0 to 4.14.0
+
+  [ Charles Giessen ]
+  * Fix EnumPhysDevGroups log message
+  * Add 1.3 NULL dispatch table checking
+  * Update Vulkan-Loader to 1.4
+
+  [ Graeme Leese ]
+  * Fix out-of-memory case in cJSON
+
+  [ Charles Giessen ]
+  * Verify meta layers aren't recursive to any depth
+  * Check enable_environment for NULL before copying
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.27.5 to 3.27.9
+
+  [ John Zupin ]
+  * packaging: debian: update copyright
+
+  [ Mike Schuchardt ]
+  * ci: Bump python version for CodeQL workflow
+  * build: Update to header 1.4.304
+
+  [ Charles Giessen ]
+  * Remove false positive unknown chain member warnings
+  * Make Xrandr not implicitly required when x11 is used
+  * Use 32 bit pkg-config in linux 32 bit CI jobs
+
+ -- john <john@odin>  Mon, 06 Jan 2025 14:40:41 -0700
+
 vulkan-loader (1.3.296.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ dependabot[bot] ]
