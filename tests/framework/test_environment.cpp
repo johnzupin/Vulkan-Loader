@@ -140,7 +140,6 @@ void init_vulkan_functions(VulkanFunctions& funcs) {
     funcs.vkCreateWin32SurfaceKHR = GPA(vkCreateWin32SurfaceKHR);
     funcs.vkGetPhysicalDeviceWin32PresentationSupportKHR = GPA(vkGetPhysicalDeviceWin32PresentationSupportKHR);
 #endif  // VK_USE_PLATFORM_WIN32_KHR
-
     funcs.vkDestroyDevice = GPA(vkDestroyDevice);
     funcs.vkGetDeviceQueue = GPA(vkGetDeviceQueue);
 #undef GPA
@@ -698,7 +697,7 @@ void FrameworkEnvironment::add_layer_impl(TestLayerDetails layer_details, Manife
         }
 #if defined(_WIN32)
         if (layer_details.discovery_type == ManifestDiscoveryType::windows_app_package) {
-            platform_shim->set_app_package_path(layer_manifest_loc);
+            platform_shim->set_app_package_path(folder.location());
         }
 #endif
         for (size_t i = new_layers_start; i < layers.size(); i++) {
