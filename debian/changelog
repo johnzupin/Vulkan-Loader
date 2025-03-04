@@ -1,3 +1,75 @@
+vulkan-loader (1.4.309.0~rc1-1lunarg24.04-1) noble; urgency=medium
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.27.9 to 3.28.0
+
+  [ Charles Giessen ]
+  * Better document the header version VK_DRIVER_FILES was added
+  * Rename loader_platform_* to test_platform_*
+  * Use GoogleTest as static library
+  * Allow tests to directly call loader internal functions
+  * Always memset newly reallocated memory
+  * Include fuzz test which needs realloc memsetting
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.0 to 3.28.1
+
+  [ Reger95 ]
+  * Make emulate_VK_EXT_surface_maintenance1 more comply to vk spec
+
+  [ Charles Giessen ]
+  * Fix log message in vkGetPhysicalDeviceSurfaceFormatsKHR
+  * Support VK_GOOGLE_surfaceless_query
+  * Revert "Remove unused VkIcdSurface struct members"
+  * Better document VkIcdSurface ABI in wsi.h
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.4.305
+  * build: Update to header 1.4.306
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.1 to 3.28.5
+
+  [ Charles Giessen ]
+  * Add NULL checks for VkDeviceCreateInfo ppEnabledExtensionNames
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.4.307
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.5 to 3.28.8
+
+  [ Charles Giessen ]
+  * Silence warnings for wrong manifest type
+
+  [ Juan Ramos ]
+  * cmake: Update minimum version to 3.22.1
+
+  [ Charles Giessen ]
+  * Allow settings with only debug logging to work
+  * Prepend [Vulkan Loader] to stderr log output
+  * Update docs to reflect changes in log output
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.8 to 3.28.9
+
+  [ Yilong Li ]
+  * loader: Explicitly specify argument types
+  * build: Fix Chromium-specific configs in BUILD.gn
+  * loader: Use "const char*" for string literals
+
+  [ armarmgc ]
+  * Fix typo
+
+  [ Yilong Li ]
+  * gn: Add _GNU_SOURCE definition to Linux builds
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.4.309
+  * build: Update to header 1.4.309
+
+ -- john <john@odin>  Tue, 04 Mar 2025 09:44:04 -0700
+
 vulkan-loader (1.4.304.0~rc1-1lunarg24.04-1) noble; urgency=medium
 
   [ dependabot[bot] ]
