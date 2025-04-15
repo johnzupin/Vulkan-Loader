@@ -1,3 +1,68 @@
+vulkan-loader (1.4.312.0~rc1-1lunarg22.04-1) jammy; urgency=medium
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.9 to 3.28.10
+
+  [ Daniel Rakos ]
+  * loader: Lazily allocate ICD surface objects
+
+  [ Charles Giessen ]
+  * Cleanup BUILDER_VALUE macros in tests
+  * Update Github Actions to use Ubuntu 24 & 22
+  * Refactor codegen scripts to use vulkan_object.py
+
+  [ Juan Ramos ]
+  * ci: Use PKG_CONFIG_PATH instead of 32 bit pkg-config
+
+  [ Yilong Li ]
+  * gn: Disable function UBsan check
+
+  [ Charles Giessen ]
+  * Check pAllocator in test_icd
+  * Fix pAllocator in lazily allocated ICD surfaces
+
+  [ Mike Schuchardt ]
+  * scripts: Fix f-strings
+  * build: Update to header 1.4.310
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.10 to 3.28.11
+
+  [ Máté Ferenc Nagy-Egri ]
+  * scripts: vulkansc downstream fixes
+
+  [ Charles Giessen ]
+  * Refactor tests to use more of std::filesystem
+  * Run github actions ctest in parallel
+  * Close ICD library if it invalid
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.4.311
+
+  [ spencer-lunarg ]
+  * scripts: Have legact genvk point to new script
+  * Remove vk_loader_extensions.c.inc for user
+
+  [ Charles Giessen ]
+  * Use VulkanObject aliases in codegen
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.11 to 3.28.13
+
+  [ dependabot[bot] ]
+  * build(deps): bump jidicula/clang-format-action from 4.14.0 to 4.15.0
+
+  [ Mike Schuchardt ]
+  * build: Update to header 1.4.312
+
+  [ dependabot[bot] ]
+  * build(deps): bump github/codeql-action from 3.28.13 to 3.28.14
+
+  [ jpr42 ]
+  * Utilize pre-installed Ninja
+
+ -- john <john@odin>  Tue, 15 Apr 2025 14:48:03 -0600
+
 vulkan-loader (1.4.309.0~rc1-1lunarg22.04-1) jammy; urgency=medium
 
   [ dependabot[bot] ]
